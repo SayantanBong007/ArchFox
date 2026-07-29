@@ -8,25 +8,31 @@ logger = get_logger(__name__)
 # Initialize a global connection to Neo4j for the tools to use
 neo4j = Neo4jStore()
 
+import json
+
 @tool
-def get_upstream_callers(function_name: str) -> list[str]:
+def get_upstream_callers(function_name: str) -> str:
     """
     Finds all functions that call a specific function. 
     Use this when a function is modified to see what other parts of the codebase might break.
     """
     logger.info(f"Agent called tool: get_upstream_callers('{function_name}')")
     callers = neo4j.get_upstream_callers(function_name)
-    return callers
+    if not callers:
+        return "No upstream callers found."
+    return json.dumps(callers)
 
 @tool
-def get_dependencies(function_name: str) -> list[str]:
+def get_dependencies(function_name: str) -> str:
     """
     Finds everything a specific function calls.
     Use this to understand what a function relies on.
     """
     logger.info(f"Agent called tool: get_dependencies('{function_name}')")
     deps = neo4j.get_dependencies(function_name)
-    return deps
+    if not deps:
+        return "No dependencies found."
+    return json.dumps(deps)
 
 @tool
 def read_file_content(file_path: str) -> str:
@@ -41,7 +47,10 @@ def read_file_content(file_path: str) -> str:
         
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            return f.read()
+            content = f.read()
+            if not content.strip():
+                return f"File {file_path} is empty."
+            return content
     except Exception as e:
         return f"Error reading file: {str(e)}"
 
