@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kitsune — a general-purpose repository knowledge base system</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1b1f24;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #6639ba;
+    --table-stripe: #f6f8fa;
+    --status-bg: #fff8e6;
+    --status-border: #e8c766;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --text: #e6edf3;
+      --muted: #9198a1;
+      --border: #30363d;
+      --code-bg: #161b22;
+      --accent: #b794f6;
+      --table-stripe: #161b22;
+      --status-bg: #2b2408;
+      --status-border: #5c4a12;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.65;
+    font-size: 16px;
+  }
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+  h1 {
+    font-size: 2rem;
+    margin: 0 0 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+  h2 {
+    font-size: 1.4rem;
+    margin: 40px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 1.1rem;
+    margin: 28px 0 10px;
+    color: var(--accent);
+  }
+  p { margin: 0 0 16px; }
+  ul, ol { margin: 0 0 16px; padding-left: 1.4em; }
+  li { margin-bottom: 6px; }
+  strong { font-weight: 600; }
+  a { color: var(--accent); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.88em;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.88em;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+  .status-banner {
+    background: var(--status-bg);
+    border: 1px solid var(--status-border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 8px;
+    font-size: 0.95em;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px;
+    font-size: 0.92em;
+    overflow-x: auto;
+    display: block;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--table-stripe); font-weight: 600; }
+  tr:nth-child(even) td { background: var(--table-stripe); }
+  .callout {
+    border-left: 3px solid var(--accent);
+    padding: 4px 16px;
+    margin: 16px 0;
+    background: var(--code-bg);
+    border-radius: 0 8px 8px 0;
+  }
+  .mermaid {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+  }
+  .toc {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 24px;
+    margin-bottom: 32px;
+    font-size: 0.92em;
+  }
+  .toc a { display: block; padding: 3px 0; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Kitsune — a general-purpose repository knowledge base system</h1>
+
+<div class="status-banner">
+  <strong>Status: Design document. Not yet built.</strong> ArchFox's Phases 1–3 (GitHub PR review, RAG retrieval, multi-agent LangGraph pipeline) are built and working — see <code>docs/versions/v1.md</code> through <code>v4.md</code>. This document lives inside the ArchFox repo for now since there's no code yet, but Kitsune itself is <strong>not</strong> an ArchFox subsystem.
+</div>
+
+<nav class="toc">
+  <a href="#what-is-kitsune">What is Kitsune</a>
+  <a href="#who-this-is-for">Who this is for</a>
+  <a href="#problem">The problem this solves</a>
+  <a href="#core-idea">The core idea: Concept-Grounded Repository Model</a>
+  <a href="#supporting-layers">The supporting layers</a>
+  <a href="#advanced-techniques">Advanced techniques from current practice</a>
+  <a href="#not-claim">What this does not claim</a>
+  <a href="#comparison">Honest comparison</a>
+  <a href="#notable">On becoming something people talk about</a>
+  <a href="#needed">What's needed to actually build this</a>
+  <a href="#status">Status</a>
+  <a href="#sources">Sources</a>
+</nav>
+
+<h2 id="what-is-kitsune">What is Kitsune</h2>
+
+<p>Kitsune is a <strong>standalone system, built from scratch, independent of ArchFox</strong> — the system that lets any AI agent or tool actually understand a codebase, instead of just searching it. ArchFox is Kitsune's <em>first consumer</em>, not its owner: ArchFox will call Kitsune the same way it calls Groq or the GitHub API — as an external system with its own interface — not as code living inside ArchFox's own folders.</p>
+
+<p>It replaces flat vector search (what most RAG-over-code systems do, including ArchFox's current <code>retrieval/</code> module) with a structured, layered knowledge base combined with <strong>hybrid retrieval</strong>: vector search, keyword search, and graph traversal working together instead of any one alone.</p>
+
+<p>Named after the fox — traditionally depicted with multiple tails, each a separate power. Kitsune's "tails" are its retrieval methods.</p>
+
+<h2 id="who-this-is-for">Who this is for</h2>
+
+<p>Kitsune isn't scoped to "help ArchFox review PRs better." Anything that needs to answer questions about a codebase is a potential consumer — now or in future projects:</p>
+
+<ul>
+  <li>Code review agents (ArchFox, today)</li>
+  <li>Onboarding assistants ("explain how this repo is structured" for a new engineer)</li>
+  <li>IDE plugins or chat tools answering "where is X handled in this codebase?"</li>
+  <li>Documentation generators</li>
+  <li>Issue-investigation agents (ArchFox's own later Phase 5)</li>
+  <li>Any future project that needs to reason about a codebase instead of guessing</li>
+</ul>
+
+<div class="callout">
+  <strong>Design consequence:</strong> Kitsune needs a clean, stable public interface — something like <em>index a repo once, then query it many different ways</em> — rather than a set of internal classes wired only to ArchFox's specific pipeline. It should be buildable, testable, and usable entirely on its own, with ArchFox as one integration among potentially several, not the reason the interface looks the way it does.
+</div>
+
+<h2 id="problem">The problem this solves</h2>
+
+<p>Plain RAG (what ArchFox currently does — embed chunks, store in Qdrant, search by similarity) has three well-known failure modes at scale, common to most naive RAG-over-code systems, not unique to any one implementation:</p>
+
+<ol>
+  <li><strong>Semantic drift</strong> — chunking code by arbitrary boundaries loses the surrounding context. A search for "authentication" can return a chunk with no idea how it's actually wired into the app.</li>
+  <li><strong>Hallucinated relationships</strong> — asking an LLM to reason about a large codebase in one shot invites it to guess at dependencies and structure it never actually verified.</li>
+  <li><strong>The context ceiling</strong> — no context window is big enough for a truly large codebase, no matter how cleverly it's chunked.</li>
+</ol>
+
+<h2 id="core-idea">The core idea: Concept-Grounded Repository Model</h2>
+
+<p>If Kitsune has one original contribution instead of a list of features, this is it: <strong>retrieval should operate on business concepts, not just code symbols.</strong></p>
+
+<p>Most RAG-for-code systems — including ArchFox's current <code>retrieval/</code> module — index and retrieve at the level of files, functions, and chunks. Ask "explain subscriptions" and you get back whatever code chunks happen to contain the word "subscription." Kitsune instead extracts the <em>concepts</em> a repository is actually about — Payment, Invoice, Refund, Customer, Coupon, Subscription — as first-class entities, built from code, docstrings, comments, and naming patterns combined, not just symbol names.</p>
+
+<p>Each concept carries structured memory, not just a pointer to source:</p>
+
+<pre>Authentication
+  Purpose: handles login
+  Used by: Billing, Profile, Notifications
+  Depends on: JWT, Redis, UserService
+  Introduced by: &lt;commit/PR that first added it — real git data&gt;
+  Last modified: &lt;derived from git history — real git data&gt;
+  Risk: critical (many dependents, derived from the dependency graph)</pre>
+
+<p>Ask "explain subscriptions" and Kitsune retrieves <em>everything connected to the concept</em> — its purpose, what depends on it, what it depends on, how and why it entered the codebase — not just functions whose text happens to match. Every other piece of this design (the layers below, hybrid retrieval, the graph, the agents) exists to make this concept-level retrieval accurate and grounded — they're supporting infrastructure for one idea, not independent features bolted on side by side.</p>
+
+<h2 id="supporting-layers">The supporting layers</h2>
+
+<pre class="mermaid">
+graph TD
+    subgraph Ingestion [Ingestion - once per repo]
+        A[Repository] --> B[tree-sitter parser]
+        B --> C[AST-aware chunks + contextual summaries]
+        C --> D[(Vector Index)]
+        C --> E[(Graph Index + community summaries)]
+        C --> F[(BM25 / Elasticsearch Index)]
+    end
+
+    subgraph QueryTime [Query time - every question]
+        G[Query] --> H{Query Router}
+        H -->|simple lookup| D
+        H -->|complex question| D
+        H -->|complex question| E
+        H -->|complex question| F
+        D --> I[Cross-encoder Reranker]
+        E --> I
+        F --> I
+        I --> J[Grounded Synthesis]
+        J --> K{Sufficient?}
+        K -->|No, retrieve again| H
+        K -->|Yes| L[Cited Answer]
+    end
+</pre>
+
+<p>The top half runs once when a repo is indexed. The bottom half runs fresh per question, and can loop back on itself if the synthesized answer isn't well-grounded enough on the first pass — this is what "agentic retrieval" means in practice, not a single fixed lookup.</p>
+
+<h3>1. Layered knowledge base, not flat chunks</h3>
+<p>Instead of one undifferentiated pile of embedded chunks, information is organized in layers an agent reads top-down, drilling deeper only when it needs to:</p>
+
+<ul>
+  <li><strong>Layer 1 — Ontology</strong>: the map. Business concepts (the entities from the core idea above), folder structure, how systems flow into each other. This layer also generates a <strong>Repository DNA summary</strong> on first index — architecture style (layered, hexagonal, microservices), primary communication pattern (REST, events, RPC), persistence choice, and rough coupling/complexity signals, derived from real static analysis, not guessed. Gives a new consumer an immediate "what kind of codebase is this" answer instead of just "indexed successfully."</li>
+  <li><strong>Layer 2 — Architecture</strong>: the blueprints. Subsystems, data models, cross-module dependencies (ArchFox's existing <code>RepoAnalyzer</code> already does a simple version of this).</li>
+  <li><strong>Layer 3 — Implementation</strong>: the details. Deep, per-file documentation.</li>
+</ul>
+
+<p>This mirrors how a human engineer actually orients in an unfamiliar codebase — skim the folder structure and README first, then drill into one module, not the other way around.</p>
+
+<h3>2. Hybrid retrieval, not one search method</h3>
+<p>Three retrieval methods, each covering the others' blind spots:</p>
+
+<table>
+  <tr><th>Method</th><th>Finds</th><th>Misses</th></tr>
+  <tr><td>Vector search (current)</td><td>Code that <em>means</em> something similar</td><td>Exact strings, error messages, variable names</td></tr>
+  <tr><td>BM25 / Elasticsearch</td><td>Exact keyword/lexical matches</td><td>Semantic similarity when wording differs</td></tr>
+  <tr><td>Graph traversal</td><td>What calls what, structural relationships</td><td>Anything not explicitly connected in the graph</td></tr>
+</table>
+
+<p>A query like "why does this error happen" benefits from all three: BM25 finds the literal error string, vector search finds semantically related handling code elsewhere, graph traversal finds what actually calls the failing function.</p>
+
+<h3>3. A concept-and-causality graph, not just a call graph</h3>
+<p>The graph doesn't only connect syntax (<code>Function A calls Function B</code>). It connects concepts: <code>Authentication → protects → Billing → stores → Invoice → uses → Postgres</code>. And it carries real history alongside structure — who introduced a concept, which PR/issue motivated it, and what would break if it were removed, all mined from actual git blame, commit messages, and PR/issue references, not inferred. This is what lets "explain subscriptions" answer with relationships and provenance, not just a list of matching files.</p>
+
+<h3>4. Grounded, cited synthesis through named agents</h3>
+<p>Every claim traces back to a specific file and line — not a plausible-sounding paraphrase. The synthesis pipeline is a set of concretely named roles, not an abstract "multi-agent" label: a <strong>Planner</strong> decomposes the question, a <strong>Retrieval Agent</strong> and <strong>Graph Agent</strong> pull candidates from their respective indexes, an <strong>Evidence Judge</strong> checks whether what came back actually answers the question, a <strong>Synthesizer</strong> drafts the answer, a <strong>Fact Checker</strong> verifies every claim against the retrieved evidence, and a <strong>Citation Generator</strong> attaches real file:line references to the final output. This is the same pattern already proven in ArchFox's Phase 3 (Security/Performance/Testing/Architecture specialists → Judge Agent) — reimplemented here as Kitsune's own synthesis layer so <em>any</em> consumer gets grounded, citable answers, not just ArchFox's review flow.</p>
+
+<h2 id="advanced-techniques">Advanced techniques from current practice</h2>
+
+<p>Researched rather than assumed — these are real, current (2026) techniques in production RAG systems, worth designing in from the start rather than bolting on later:</p>
+
+<ul>
+  <li><strong>Contextual Retrieval</strong> (a technique published by Anthropic): before embedding, prepend each chunk with a short, LLM-generated note on where it sits in the file and repo — e.g. "this function belongs to <code>UserService</code> in <code>services/user_service.py</code>, which handles authentication." This directly attacks semantic drift: a chunk carries its own context even when retrieved in isolation, instead of depending on the retriever to also fetch the surrounding chunks.</li>
+  <li><strong>AST-aware chunking with real sizing discipline</strong>: chunk boundaries should follow <code>tree-sitter</code>'s parse tree (function/class boundaries) — the same idea ArchFox's own <code>code_chunker.py</code> already does in miniature via regex. Production systems typically keep chunks around 100–1000 characters, and attach each chunk's scope chain, imports, and sibling signatures as structured metadata, not just raw text.</li>
+  <li><strong>Cross-encoder reranking</strong>: after hybrid retrieval pulls, say, the top 20 candidates from vector + BM25 + graph combined, a second, more expensive but far more accurate model re-scores just those 20 for actual relevance before the top few go to synthesis. Cheap first pass across everything, expensive second pass only on the shortlist — described in current practice as "the sweet spot of cost vs quality" beyond hybrid retrieval alone.</li>
+  <li><strong>GraphRAG-style community summaries</strong>: instead of only traversing the graph edge by edge, pre-cluster related entities (e.g. every class in an "auth" subsystem) and generate a summary for each cluster ahead of time. This gives Layer 1 (Ontology) a real, automatically generated starting point instead of requiring it to be hand-written.</li>
+  <li><strong>Adaptive routing and an agentic retrieval loop</strong>: not every query needs the full pipeline — a simple factual lookup can be answered from vector search alone, while a complex investigative question (like ArchFox's own future Phase 5, "why is payment failing?") benefits from the full hybrid pipeline, run more than once if the first pass isn't sufficient. This is what the diagram's <code>Sufficient?</code> loop represents: retrieve, judge whether it's enough, retrieve again if not, rather than one fixed pass. Cited benchmarks put naive single-pass RAG around 44% accuracy on factual questions, versus 63%+ for pipelines combining techniques like these — a measured gap, not a marginal one.</li>
+</ul>
+
+<h2 id="not-claim">What this does <strong>not</strong> claim</h2>
+
+<p>Stated plainly, since it matters: this does not eliminate hallucination or context limits — no LLM-based system can. It reduces hallucination by forcing every claim to cite real, retrieved evidence, and it works around context limits by retrieving only the relevant slice at each step instead of dumping everything in at once. The limit is hidden by good retrieval, not removed.</p>
+
+<p>Two more things explicitly out of scope, called out on purpose because they're tempting to add and easy to get wrong:</p>
+
+<ul>
+  <li><strong>No fabricated confidence scores.</strong> A concept's metadata will never show a number like "Confidence: 98%" unless there's a real, defined calculation behind it (e.g. retrieval score, or agreement across independent sources). An LLM-generated number that looks precise but isn't backed by real measurement is worse than no number at all — it borrows the credibility of statistics without doing the work.</li>
+  <li><strong>No probability-based breakage prediction</strong> (e.g. "78% chance this PR breaks payments"). Structural blast-radius — "these 4 files depend on this function, so changing it touches them" — is real, deterministic, and buildable from the dependency graph today. A calibrated <em>probability</em> of an actual failure is a different, much harder problem requiring real historical incident data to train against, which most repositories don't have labeled. Until that data and a real model exist, Kitsune reports structural impact, not a percentage.</li>
+</ul>
+
+<h2 id="comparison">Honest comparison</h2>
+
+<table>
+  <tr><th></th><th>Plain vector RAG (ArchFox today)</th><th>Graph-only tools</th><th>Kitsune (planned)</th></tr>
+  <tr><td>Retrieval unit</td><td>Code chunk</td><td>Code symbol</td><td>Business concept, grounded in code</td></tr>
+  <tr><td>Chunking</td><td>Arbitrary or function-boundary</td><td>N/A</td><td>AST-aware, with contextual summaries</td></tr>
+  <tr><td>Retrieval</td><td>Vector only</td><td>Graph only</td><td>Vector + BM25 + graph, adaptively routed</td></tr>
+  <tr><td>Reranking</td><td>No</td><td>Rare</td><td>Cross-encoder reranker on the shortlist</td></tr>
+  <tr><td>Retrieval loop</td><td>Single pass</td><td>Single pass</td><td>Agentic — retries if the answer isn't grounded enough</td></tr>
+  <tr><td>History/causality</td><td>No</td><td>No</td><td>Who introduced it, which PR/issue, from real git data</td></tr>
+  <tr><td>Citations/grounding</td><td>Rare</td><td>Rare</td><td>Required by design</td></tr>
+  <tr><td>Multi-agent synthesis</td><td>No</td><td>No</td><td>Yes, concretely named roles (built in Phase 3, extended here)</td></tr>
+</table>
+
+<p><strong>Versus commercial tools</strong> (CodeRabbit, Cursor, GitHub Copilot): those are production systems built by full teams with years of real-world iteration and evaluation data. Kitsune is a Phase 4 plan for a learning project. Being honest about that isn't a knock on the idea — hybrid retrieval plus an explicit layered knowledge base plus built-in multi-agent synthesis isn't standard in most of those tools today, which is a real technical angle worth pursuing. But it's a hypothesis to prove by building and testing, not a claim to make in a document.</p>
+
+<h2 id="notable">On becoming something people talk about</h2>
+
+<p>No design document makes a project notable — three things actually do: it has to genuinely work on real repositories, better than the alternative, in a way people can verify themselves; it has to be shared publicly (open source, write-ups, demos); and it has to solve a problem people already recognize they have. The most credible path from here is: build Kitsune for real, keep the <code>docs/versions/</code> learning log going (which is already a genuine "built in public" story), and open-source it once it's solid enough to withstand outside eyes. This document is a plan to build toward that, not the thing that gets there by itself.</p>
+
+<h2 id="needed">What's needed to actually build this</h2>
+
+<ul>
+  <li>Its own multi-language parser, using <code>tree-sitter</code> — not a reuse of ArchFox's Python-only <code>ast</code>-based <code>RepoAnalyzer</code>, which was built for ArchFox's specific needs, not as a general-purpose component</li>
+  <li><strong>A concept-extraction pipeline</strong> — the core idea's actual engine: identifying business concepts from code symbols, docstrings, comments, and naming patterns, and disambiguating them (this is the hardest, least off-the-shelf piece of the whole design, and the one worth prototyping first)</li>
+  <li><strong>A causality-mining step</strong> over real git history — git blame, commit messages, and PR/issue references, to populate "introduced by," "last modified," and "motivated by" fields with real data, not inference</li>
+  <li>Graph database integration (e.g. Neo4j) for structural relationships <em>and</em> concept-to-concept relationships</li>
+  <li>BM25/Elasticsearch integration for lexical search</li>
+  <li>Layer-generation pipeline for the 3-layer knowledge base, including automatic community summaries for Layer 1 (GraphRAG-style clustering, not hand-written) and the Repository DNA summary</li>
+  <li>A contextual-retrieval step that attaches a short generated note to each chunk before embedding</li>
+  <li>A cross-encoder reranker for the post-retrieval shortlist</li>
+  <li>A query router that matches simple queries to a fast single-method lookup and complex ones to the full hybrid pipeline, with a retry loop if the synthesized answer isn't sufficiently grounded</li>
+  <li>The named agent roles (Planner, Retrieval Agent, Graph Agent, Evidence Judge, Synthesizer, Fact Checker, Citation Generator) as real, separate implementations — not just a label</li>
+  <li>Citation/grounding enforcement built into every synthesized answer, not just one consumer's flow</li>
+  <li><strong>A stable public interface</strong> — index/query methods (or an API, if run as a service) that any consumer project can call, versioned independently of ArchFox's own release cycle</li>
+  <li>A decision on distribution: a standalone installable package (e.g. <code>pip install kitsune-kb</code>) versus a hosted service ArchFox and future projects call over a network — worth deciding deliberately when this is actually built, not assumed now</li>
+</ul>
+
+<h2 id="status">Status</h2>
+
+<p>Design only. Nothing in this document is implemented yet. Revisit when Phase 3 work is fully wrapped and there's deliberate time to start Phase 4 — see the project's established pace: build incrementally, test each piece, don't jump ahead before the current phase feels solid.</p>
+
+<h2 id="sources">Sources</h2>
+
+<p>The "Advanced techniques" section above is based on current (2026) research and production practice, not assumption:</p>
+
+<ul>
+  <li><a href="https://neo4j.com/blog/genai/advanced-rag-techniques/">Advanced RAG techniques for high-performance LLM applications</a> — Neo4j, on hybrid retrieval, reranking, and Contextual Retrieval</li>
+  <li><a href="https://atlan.com/know/advanced-rag-techniques/">12 Advanced RAG Techniques: Beyond Naive Retrieval</a> — Atlan, covering RAPTOR, Self-RAG, GraphRAG, and adaptive routing, including the 44%-vs-63% accuracy benchmark</li>
+  <li><a href="https://arxiv.org/pdf/2501.09136">Agentic Retrieval-Augmented Generation: A Survey on Agentic RAG</a> — survey on the retrieve-judge-retry loop pattern</li>
+  <li><a href="https://github.com/sarabesh/HybridRAG">GitHub: sarabesh/HybridRAG</a> — a working reference implementation combining vector and Neo4j graph search</li>
+  <li><a href="https://pub.towardsai.net/building-real-time-semantic-code-search-with-tree-sitter-and-vector-embeddings-b9b1fc0a94f3">Building Real-Time Semantic Code Search With Tree-sitter and Vector Embeddings</a> — Towards AI, on AST-aware chunking practice</li>
+  <li><a href="https://arxiv.org/html/2506.15655v1">cAST: Enhancing Code Retrieval-Augmented Generation with Structural Chunking via Abstract Syntax Tree</a> — research on AST-based chunk sizing</li>
+  <li><a href="https://github.com/supermemoryai/code-chunk">GitHub: supermemoryai/code-chunk</a> — a working reference implementation of AST-aware code chunking</li>
+</ul>
+
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: true, theme: isDark ? "dark" : "default" });
+</script>
+
+</body>
+</html>

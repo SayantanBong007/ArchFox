@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth *)",
+      "Bash(git --version)",
+      "Bash(git config *)",
+      "Bash(./.venv/Scripts/python.exe -m apps.cli.main)"
+    ]
+  }
+}
