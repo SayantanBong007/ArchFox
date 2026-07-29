@@ -9,19 +9,24 @@ For Kitsune, our graph looks like this:
 - Nodes: Chunks (functions, classes)
 - Edges: "CALLS" (e.g. `handle_checkout` CALLS `charge_stripe`)
 
-WHY NETWORKX INSTEAD OF NEO4J?
-==============================
-Neo4j is the industry standard graph database, but running a heavy Java-based Docker container 
-in a CI/CD pipeline (like GitHub Actions) often leads to connection timeouts and out-of-memory errors.
+WHY NEO4J?
+==========
+Neo4j is the industry standard graph database. It uses a query language
+called Cypher. For example, to find everything a function calls:
+    MATCH (caller:Chunk {name: 'handle_checkout'})-[r:CALLS]->(callee)
+    RETURN callee
 
-We have rewritten this store to use `networkx`, an in-memory graph library. 
-It requires zero setup, zero docker containers, and runs instantly in CI/CD!
+When a user asks a complex question, we can find the starting node via
+ChromaDB (vector search), and then query Neo4j to find all its dependencies
+so the LLM sees the complete execution path!
 """
 
 from __future__ import annotations
 
 import logging
-import networkx as nx
+import os
+
+from neo4j import GraphDatabase
 
 from kitsune.models.chunk import Chunk
 
@@ -29,71 +34,162 @@ logger = logging.getLogger(__name__)
 
 
 class Neo4jStore:
-    """Uses NetworkX under the hood to mock a Graph Database in CI/CD."""
+    """Wraps Neo4j for storing and querying the code dependency graph."""
 
     def __init__(self):
-        self.graph = nx.DiGraph()
-        logger.info("Initialized in-memory NetworkX Graph (Mocking Neo4j)")
+        """Connect to the Neo4j database."""
+        uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        user = os.getenv("NEO4J_USER", "neo4j")
+        password = os.getenv("NEO4J_PASSWORD", "kitsune_password")
+        import time
+        
+        max_retries = 12
+        retry_delay = 5  # wait 5 seconds between retries (up to 60s total)
+        self._driver = None
+        
+        for attempt in range(max_retries):
+            try:
+                self._driver = GraphDatabase.driver(uri, auth=(user, password))
+                self._driver.verify_connectivity()
+                logger.info(f"Neo4j connected at {uri} on attempt {attempt + 1}")
+                self._setup_constraints()
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Neo4j not ready yet (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(f"Failed to connect to Neo4j after {max_retries} attempts. Error: {e}")
+                    self._driver = None
 
     def close(self):
-        pass
+        if self._driver:
+            self._driver.close()
+
+    def _setup_constraints(self):
+        """Create a uniqueness constraint on chunk IDs to prevent duplicates."""
+        if not self._driver:
+            return
+            
+        # We'll use a combination of file_path and name as a unique ID for nodes
+        query = """
+        CREATE CONSTRAINT chunk_id IF NOT EXISTS 
+        FOR (c:Chunk) REQUIRE c.id IS UNIQUE
+        """
+        with self._driver.session() as session:
+            try:
+                session.run(query)
+            except Exception as e:
+                logger.debug(f"Could not create constraint (might already exist): {e}")
 
     def _make_id(self, chunk: Chunk) -> str:
         """Create a unique string ID for a chunk node."""
         return f"{chunk.file_path}::{chunk.name}"
 
     def upsert_chunk_node(self, chunk: Chunk):
-        node_id = self._make_id(chunk)
-        self.graph.add_node(
-            node_id,
-            name=chunk.name,
-            type=chunk.chunk_type,
-            file_path=chunk.file_path,
-            start_line=chunk.start_line,
-            end_line=chunk.end_line
-        )
+        """Store a chunk as a node in the graph.
+        
+        MERGE acts like an 'upsert' in Cypher. If the node exists, it updates it.
+        If it doesn't, it creates it.
+        """
+        if not self._driver:
+            return
+
+        query = """
+        MERGE (c:Chunk {id: $id})
+        SET c.name = $name,
+            c.type = $type,
+            c.file_path = $file_path,
+            c.start_line = $start_line,
+            c.end_line = $end_line
+        """
+        with self._driver.session() as session:
+            session.run(query, 
+                        id=self._make_id(chunk),
+                        name=chunk.name,
+                        type=chunk.chunk_type,
+                        file_path=chunk.file_path,
+                        start_line=chunk.start_line,
+                        end_line=chunk.end_line)
 
     def add_call_edge(self, caller_chunk: Chunk, callee_name: str):
-        caller_id = self._make_id(caller_chunk)
+        """Create a CALLS edge from a chunk to another function name.
         
-        # Find if callee_name exists in any node
-        callee_id = next((n for n, d in self.graph.nodes(data=True) if d.get('name') == callee_name), None)
-        
-        if not callee_id:
-            # Create stub node just like original Neo4j
-            callee_id = f"stub::{callee_name}"
-            self.graph.add_node(callee_id, name=callee_name)
-            
-        self.graph.add_edge(caller_id, callee_id, type="CALLS")
+        Notice how we MERGE the callee based only on its name.
+        If we haven't indexed the callee's file yet, this creates a "stub" node
+        that just has the name. When we do index the callee's file later,
+        upsert_chunk_node will fill in the rest of its properties!
+        """
+        if not self._driver:
+            return
+
+        # We assume the callee name is unique enough for this simple demo.
+        # In a real system, you'd try to resolve the exact file path of the callee.
+        query = """
+        MATCH (caller:Chunk {id: $caller_id})
+        MERGE (callee:Chunk {name: $callee_name})
+        MERGE (caller)-[:CALLS]->(callee)
+        """
+        with self._driver.session() as session:
+            session.run(query, 
+                        caller_id=self._make_id(caller_chunk),
+                        callee_name=callee_name)
 
     def get_dependencies(self, chunk_name: str) -> list[str]:
-        # Find nodes with name == chunk_name
-        nodes = [n for n, d in self.graph.nodes(data=True) if d.get('name') == chunk_name]
-        deps = []
-        for n in nodes:
-            for successor in self.graph.successors(n):
-                deps.append(self.graph.nodes[successor].get('name'))
-        return deps
+        """Find everything a specific chunk calls.
+        
+        This is the magic of GraphRAG! We just follow the arrows.
+        """
+        if not self._driver:
+            return []
 
+        query = """
+        MATCH (caller:Chunk {name: $name})-[:CALLS]->(callee)
+        RETURN callee.name AS callee_name
+        """
+        with self._driver.session() as session:
+            result = session.run(query, name=chunk_name)
+            return [record["callee_name"] for record in result]
+            
     def get_upstream_callers(self, chunk_name: str) -> list[str]:
-        nodes = [n for n, d in self.graph.nodes(data=True) if d.get('name') == chunk_name]
-        callers = []
-        for n in nodes:
-            for predecessor in self.graph.predecessors(n):
-                callers.append(self.graph.nodes[predecessor].get('name'))
-        return callers
+        """Find all functions that call a specific chunk.
+        
+        This finds the 'upstream' dependencies. If I change 'chunk_name',
+        these are the functions that might break!
+        """
+        if not self._driver:
+            return []
+
+        query = """
+        MATCH (caller:Chunk)-[:CALLS]->(callee:Chunk {name: $name})
+        RETURN caller.name AS caller_name
+        """
+        with self._driver.session() as session:
+            result = session.run(query, name=chunk_name)
+            return [record["caller_name"] for record in result]
 
     def get_node_metadata(self, chunk_name: str) -> dict | None:
-        nodes = [n for n, d in self.graph.nodes(data=True) if d.get('name') == chunk_name]
-        if nodes:
-            data = self.graph.nodes[nodes[0]]
-            return {
-                "file": data.get("file_path"),
-                "start_line": data.get("start_line"),
-                "end_line": data.get("end_line"),
-                "type": data.get("type")
-            }
-        return None
+        """Fetch the structural metadata (file, lines, type) for a node."""
+        if not self._driver:
+            return None
+            
+        query = """
+        MATCH (c:Chunk {name: $name})
+        RETURN c.file_path AS file, c.start_line AS start_line, 
+               c.end_line AS end_line, c.type AS type
+        LIMIT 1
+        """
+        with self._driver.session() as session:
+            result = session.run(query, name=chunk_name).single()
+            if result:
+                return dict(result)
+            return None
 
+            
     def clear_all(self):
-        self.graph.clear()
+        """Delete all nodes and edges (useful for tests)."""
+        if not self._driver:
+            return
+        query = "MATCH (n) DETACH DELETE n"
+        with self._driver.session() as session:
+            session.run(query)
