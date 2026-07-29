@@ -41,16 +41,26 @@ class Neo4jStore:
         uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
         user = os.getenv("NEO4J_USER", "neo4j")
         password = os.getenv("NEO4J_PASSWORD", "kitsune_password")
+        import time
         
-        try:
-            self._driver = GraphDatabase.driver(uri, auth=(user, password))
-            # Verify connection
-            self._driver.verify_connectivity()
-            logger.info(f"Neo4j connected at {uri}")
-            self._setup_constraints()
-        except Exception as e:
-            logger.error(f"Failed to connect to Neo4j. Is the Docker container running? Error: {e}")
-            self._driver = None
+        max_retries = 12
+        retry_delay = 5  # wait 5 seconds between retries (up to 60s total)
+        self._driver = None
+        
+        for attempt in range(max_retries):
+            try:
+                self._driver = GraphDatabase.driver(uri, auth=(user, password))
+                self._driver.verify_connectivity()
+                logger.info(f"Neo4j connected at {uri} on attempt {attempt + 1}")
+                self._setup_constraints()
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Neo4j not ready yet (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(f"Failed to connect to Neo4j after {max_retries} attempts. Error: {e}")
+                    self._driver = None
 
     def close(self):
         if self._driver:
