@@ -20,14 +20,16 @@ class JudgeAgent:
         security_findings: str,
         performance_findings: str,
         testing_findings: str,
-        architecture_findings: str
+        architecture_findings: str,
+        documentation_findings: str
     ):
         user_prompt = build_judge_prompt(
             review,
             security_findings,
             performance_findings,
             testing_findings,
-            architecture_findings
+            architecture_findings,
+            documentation_findings
         )
 
         response = self.client.chat.completions.create(

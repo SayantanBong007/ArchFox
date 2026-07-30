@@ -14,6 +14,7 @@ from graphs.nodes import (
     performance_node,
     testing_node,
     architecture_review_node,
+    documentation_node,
     judge_node,
     kitsune_fix_node
 )
@@ -34,6 +35,7 @@ def build_pipeline_graph():
     graph.add_node("performance", performance_node)
     graph.add_node("testing", testing_node)
     graph.add_node("architecture_review", architecture_review_node)
+    graph.add_node("documentation", documentation_node)
     graph.add_node("judge", judge_node)
     graph.add_node("kitsune_fix", kitsune_fix_node)
 
@@ -49,11 +51,15 @@ def build_pipeline_graph():
     graph.add_edge("retrieve_context", "performance")
     graph.add_edge("retrieve_context", "testing")
     graph.add_edge("retrieve_context", "architecture_review")
+    graph.add_edge("retrieve_context", "documentation")
+    
     graph.add_edge("review", "judge")
     graph.add_edge("security", "judge")
     graph.add_edge("performance", "judge")
     graph.add_edge("testing", "judge")
     graph.add_edge("architecture_review", "judge")
+    graph.add_edge("documentation", "judge")
+    
     graph.add_edge("judge", "kitsune_fix")
     graph.add_edge("kitsune_fix", END)
 

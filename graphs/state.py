@@ -17,5 +17,6 @@ class PipelineState(TypedDict):
     performance_findings: str
     testing_findings: str
     architecture_findings: str
+    documentation_findings: str
     final_report: str
     fix_payload: str

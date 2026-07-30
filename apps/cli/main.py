@@ -41,6 +41,7 @@ def main():
         ("PERFORMANCE FINDINGS",  "performance_findings"),
         ("TESTING FINDINGS",      "testing_findings"),
         ("ARCHITECTURE FINDINGS", "architecture_findings"),
+        ("DOCUMENTATION FINDINGS","documentation_findings"),
         ("FINAL REPORT (Judge)",  "final_report"),
         ("KITSUNE FIX PAYLOAD",   "fix_payload"),
     ]

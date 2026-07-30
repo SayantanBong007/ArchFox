@@ -125,6 +125,16 @@ def architecture_review_node(state: PipelineState) -> dict:
     return {"architecture_findings": architecture_findings}
 
 
+def documentation_node(state: PipelineState) -> dict:
+    from agents.documentation_agent import DocumentationAgent
+    agent = DocumentationAgent()
+    documentation_findings = agent.analyze(
+        diff_content=state["diff_content"],
+        repo_context=state["retrieved_context"]
+    )
+    return {"documentation_findings": documentation_findings}
+
+
 def judge_node(state: PipelineState) -> dict:
     agent = JudgeAgent()
     final_report = agent.judge(
@@ -132,7 +142,8 @@ def judge_node(state: PipelineState) -> dict:
         security_findings=state["security_findings"],
         performance_findings=state["performance_findings"],
         testing_findings=state["testing_findings"],
-        architecture_findings=state["architecture_findings"]
+        architecture_findings=state["architecture_findings"],
+        documentation_findings=state.get("documentation_findings", "No documentation issues found.")
     )
     return {"final_report": final_report}
 
