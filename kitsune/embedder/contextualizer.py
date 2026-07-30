@@ -144,7 +144,7 @@ async def build_llm_context_note(chunk: Chunk, repo_summary: str = "") -> str:
         )
 
         response = await client.chat.completions.create(
-            model=os.getenv("LLM_MODEL", "llama-3.3-70b-versatile"),
+            model=os.getenv("LLM_MODEL", "llama-3.1-8b-instant"),
             messages=[{"role": "user", "content": prompt}],
             max_tokens=80,
             temperature=0.0,

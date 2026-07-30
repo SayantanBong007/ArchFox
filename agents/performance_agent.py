@@ -18,7 +18,7 @@ class PerformanceAgent:
         user_prompt = build_performance_prompt(diff_content, repo_context)
 
         response = self.client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": PERFORMANCE_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}

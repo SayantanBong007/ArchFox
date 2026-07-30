@@ -12,7 +12,7 @@ class ReviewerAgent:
         # We switch to LangChain's ChatGroq to easily bind tools
         self.llm = ChatGroq(
             api_key=GROQ_API_KEY,
-            model="llama-3.3-70b-versatile"
+            model="llama-3.1-8b-instant"
         )
         
         # create_react_agent builds a mini-graph that handles the

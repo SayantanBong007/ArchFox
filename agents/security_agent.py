@@ -18,7 +18,7 @@ class SecurityAgent:
         user_prompt = build_security_prompt(diff_content, repo_context)
 
         response = self.client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": SECURITY_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}
