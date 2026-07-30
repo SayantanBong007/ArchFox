@@ -26,21 +26,8 @@ Related Repository Context:
 
 {repo_context}
 
-Review this pull request and Return output in:
-
-# Summary
-
-# Bugs
-
-# Security Risks
-
-# Performance Issues
-
-# Architecture Concerns
-
-# Missing Tests
-
-# Recommendations
+Review this pull request and return a JSON array of findings.
+Schema: [{"file": "path", "line": 42, "comment": "Issue description"}]
 
 Focus on:
 - Bugs

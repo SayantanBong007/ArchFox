@@ -149,56 +149,67 @@ def judge_node(state: PipelineState) -> dict:
 
 
 def kitsune_fix_node(state: PipelineState) -> dict:
-    logger.info("Kitsune is planning a fix based on the Judge's report...")
-    agent = FixAgent()
-    payload = agent.generate_fix_payload(
-        bug_report=state["final_report"],
-        pr_diff=state.get("diff_content", "")
-    )
-
-    github_client = GitHubClient()
-    logger.info(f"Posting fix to GitHub PR #{state['pr_number']} on {state['owner']}/{state['repo_name']}...")
-
-    import re
+    import json
     import os
+    
+    logger.info("Kitsune is processing JSON findings to post inline comments...")
+    
     try:
-        target_file = None
-        target_line = None
+        report_text = state["final_report"].strip()
+        if report_text.startswith("```json"):
+            report_text = report_text[7:]
+        elif report_text.startswith("```"):
+            report_text = report_text[3:]
+        if report_text.endswith("```"):
+            report_text = report_text[:-3]
+        report_text = report_text.strip()
         
-        file_match = re.search(r'\*\*Target File:\*\*\s*`?([^\n`]+)`?', payload)
-        line_match = re.search(r'\*\*Target Line:\*\*\s*(\d+)', payload)
-        
-        if file_match and line_match:
-            target_file = file_match.group(1).strip()
-            target_line = int(line_match.group(1).strip())
-            
-            import os
-            clone_prefix = os.path.join("data", "repos", state["repo_name"], "")
-            # LLMs sometimes return forward slashes or backslashes
-            clone_prefix_fwd = clone_prefix.replace("\\", "/")
-            if clone_prefix in target_file:
-                target_file = target_file.split(clone_prefix)[1]
-            elif clone_prefix_fwd in target_file:
-                target_file = target_file.split(clone_prefix_fwd)[1]
-            target_file = target_file.replace("\\", "/")
-            
-            pr_details = github_client.get_pr_details(state["owner"], state["repo_name"], state["pr_number"])
-            commit_id = pr_details.get("head", {}).get("sha")
-            
-            if commit_id:
-                try:
-                    github_client.post_inline_pr_comment(
-                        state["owner"], state["repo_name"], state["pr_number"], 
-                        commit_id, target_file, target_line, payload
-                    )
-                    logger.info("Successfully posted inline fix to GitHub PR!")
-                    return {"fix_payload": payload}
-                except Exception as e:
-                    logger.warning(f"Inline comment failed, falling back to general PR comment: {e}")
-
-        github_client.post_pr_comment(state["owner"], state["repo_name"], state["pr_number"], payload)
-        logger.info("Successfully posted general fix comment to GitHub PR!")
+        findings = json.loads(report_text)
     except Exception as e:
-        logger.error(f"Failed to post to GitHub: {e}")
+        logger.error(f"Failed to parse final_report as JSON: {e}")
+        return {"fix_payload": str(e)}
         
-    return {"fix_payload": payload}
+    github_client = GitHubClient()
+    pr_details = github_client.get_pr_details(state["owner"], state["repo_name"], state["pr_number"])
+    commit_id = pr_details.get("head", {}).get("sha")
+    
+    if not commit_id:
+        logger.error("Could not find commit_id for PR.")
+        return {"fix_payload": "No commit ID found."}
+
+    posted_count = 0
+    general_comments = []
+
+    for finding in findings:
+        target_file = finding.get("file")
+        target_line = finding.get("line")
+        comment = finding.get("comment")
+        
+        if not target_file or not target_line or not comment:
+            continue
+            
+        # Clean up path if it includes the clone prefix
+        clone_prefix = os.path.join("data", "repos", state["repo_name"], "")
+        clone_prefix_fwd = clone_prefix.replace("\\", "/")
+        if clone_prefix in target_file:
+            target_file = target_file.split(clone_prefix)[1]
+        elif clone_prefix_fwd in target_file:
+            target_file = target_file.split(clone_prefix_fwd)[1]
+        target_file = target_file.replace("\\", "/")
+        
+        try:
+            github_client.post_inline_pr_comment(
+                state["owner"], state["repo_name"], state["pr_number"],
+                commit_id, target_file, int(target_line), comment
+            )
+            posted_count += 1
+        except Exception as e:
+            logger.warning(f"Failed to post inline comment for {target_file}:{target_line}. {e}")
+            general_comments.append(f"**{target_file}:{target_line}** - {comment}")
+            
+    if general_comments:
+        fallback_body = "### General Findings\n" + "\n".join(f"- {c}" for c in general_comments)
+        github_client.post_pr_comment(state["owner"], state["repo_name"], state["pr_number"], fallback_body)
+
+    logger.info(f"Successfully posted {posted_count} inline comments to GitHub PR!")
+    return {"fix_payload": json.dumps(findings, indent=2)}

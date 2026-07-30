@@ -21,5 +21,6 @@ Related Repository Context:
 
 {repo_context}
 
-List only the testing gaps and concerns for this change, as a short bullet list. If test coverage looks adequate, say so explicitly.
+Output ONLY a JSON array of findings. If there are no testing gaps, return an empty array `[]`.
+Schema: [{"file": "path", "line": 42, "comment": "[Priority: Low] Issue description"}]
 """

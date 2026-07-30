@@ -21,5 +21,6 @@ Related Repository Context:
 
 {repo_context}
 
-List only the performance issues in this change, as a short bullet list. If there are none, say so explicitly.
+Output ONLY a JSON array of findings. If there are no performance issues, return an empty array `[]`.
+Schema: [{"file": "path", "line": 42, "comment": "[Priority: Medium] Issue description"}]
 """

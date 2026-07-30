@@ -24,7 +24,8 @@ class DocumentationAgent:
         Code Changes (Diff):
         {diff_content}
         
-        Output only your concise documentation findings as a bulleted list.
+        Output ONLY a JSON array of findings.
+        Schema: [{"file": "path", "line": 42, "comment": "Issue description"}]
         """
         response = self.client.chat.completions.create(
             model=os.getenv("LLM_MODEL", "llama-3.1-8b-instant"),
