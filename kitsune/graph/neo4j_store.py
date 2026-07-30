@@ -25,53 +25,48 @@ from __future__ import annotations
 
 import logging
 import os
+import networkx as nx
 
 from neo4j import GraphDatabase
-
 from kitsune.models.chunk import Chunk
 
 logger = logging.getLogger(__name__)
 
-
 class Neo4jStore:
-    """Wraps Neo4j for storing and querying the code dependency graph."""
+    """Wraps Neo4j for storing and querying the code dependency graph.
+    
+    If Neo4j is unavailable (e.g. in GitHub Actions), this gracefully 
+    falls back to an in-memory NetworkX graph!
+    """
 
     def __init__(self):
-        """Connect to the Neo4j database."""
+        """Try to connect to Neo4j, fallback to NetworkX if it fails."""
         uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
         user = os.getenv("NEO4J_USER", "neo4j")
         password = os.getenv("NEO4J_PASSWORD", "kitsune_password")
-        import time
         
-        max_retries = 12
-        retry_delay = 5  # wait 5 seconds between retries (up to 60s total)
         self._driver = None
+        self.use_fallback = False
+        self.nx_graph = None
         
-        for attempt in range(max_retries):
-            try:
-                self._driver = GraphDatabase.driver(uri, auth=(user, password))
-                self._driver.verify_connectivity()
-                logger.info(f"Neo4j connected at {uri} on attempt {attempt + 1}")
-                self._setup_constraints()
-                break
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    logger.warning(f"Neo4j not ready yet (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay}s...")
-                    time.sleep(retry_delay)
-                else:
-                    logger.error(f"Failed to connect to Neo4j after {max_retries} attempts. Error: {e}")
-                    self._driver = None
+        try:
+            self._driver = GraphDatabase.driver(uri, auth=(user, password))
+            self._driver.verify_connectivity()
+            logger.info(f"Neo4j connected successfully at {uri}!")
+            self._setup_constraints()
+        except Exception as e:
+            logger.warning(f"Neo4j connection failed: {e}")
+            logger.warning("Falling back to in-memory NetworkX Graph!")
+            self._driver = None
+            self.use_fallback = True
+            self.nx_graph = nx.DiGraph()
 
     def close(self):
         if self._driver:
             self._driver.close()
 
     def _setup_constraints(self):
-        """Create a uniqueness constraint on chunk IDs to prevent duplicates."""
-        if not self._driver:
-            return
-            
-        # We'll use a combination of file_path and name as a unique ID for nodes
+        if self.use_fallback: return
         query = """
         CREATE CONSTRAINT chunk_id IF NOT EXISTS 
         FOR (c:Chunk) REQUIRE c.id IS UNIQUE
@@ -80,116 +75,105 @@ class Neo4jStore:
             try:
                 session.run(query)
             except Exception as e:
-                logger.debug(f"Could not create constraint (might already exist): {e}")
+                logger.debug(f"Could not create constraint: {e}")
 
     def _make_id(self, chunk: Chunk) -> str:
-        """Create a unique string ID for a chunk node."""
         return f"{chunk.file_path}::{chunk.name}"
 
     def upsert_chunk_node(self, chunk: Chunk):
-        """Store a chunk as a node in the graph.
-        
-        MERGE acts like an 'upsert' in Cypher. If the node exists, it updates it.
-        If it doesn't, it creates it.
-        """
-        if not self._driver:
+        if self.use_fallback:
+            node_id = self._make_id(chunk)
+            self.nx_graph.add_node(
+                node_id,
+                name=chunk.name,
+                type=chunk.chunk_type,
+                file_path=chunk.file_path,
+                start_line=chunk.start_line,
+                end_line=chunk.end_line
+            )
             return
 
         query = """
         MERGE (c:Chunk {id: $id})
-        SET c.name = $name,
-            c.type = $type,
-            c.file_path = $file_path,
-            c.start_line = $start_line,
-            c.end_line = $end_line
+        SET c.name = $name, c.type = $type, c.file_path = $file_path,
+            c.start_line = $start_line, c.end_line = $end_line
         """
         with self._driver.session() as session:
-            session.run(query, 
-                        id=self._make_id(chunk),
-                        name=chunk.name,
-                        type=chunk.chunk_type,
-                        file_path=chunk.file_path,
-                        start_line=chunk.start_line,
-                        end_line=chunk.end_line)
+            session.run(query, id=self._make_id(chunk), name=chunk.name,
+                        type=chunk.chunk_type, file_path=chunk.file_path,
+                        start_line=chunk.start_line, end_line=chunk.end_line)
 
     def add_call_edge(self, caller_chunk: Chunk, callee_name: str):
-        """Create a CALLS edge from a chunk to another function name.
-        
-        Notice how we MERGE the callee based only on its name.
-        If we haven't indexed the callee's file yet, this creates a "stub" node
-        that just has the name. When we do index the callee's file later,
-        upsert_chunk_node will fill in the rest of its properties!
-        """
-        if not self._driver:
+        if self.use_fallback:
+            caller_id = self._make_id(caller_chunk)
+            callee_id = next((n for n, d in self.nx_graph.nodes(data=True) if d.get('name') == callee_name), None)
+            if not callee_id:
+                callee_id = f"stub::{callee_name}"
+                self.nx_graph.add_node(callee_id, name=callee_name)
+            self.nx_graph.add_edge(caller_id, callee_id, type="CALLS")
             return
 
-        # We assume the callee name is unique enough for this simple demo.
-        # In a real system, you'd try to resolve the exact file path of the callee.
         query = """
         MATCH (caller:Chunk {id: $caller_id})
         MERGE (callee:Chunk {name: $callee_name})
         MERGE (caller)-[:CALLS]->(callee)
         """
         with self._driver.session() as session:
-            session.run(query, 
-                        caller_id=self._make_id(caller_chunk),
-                        callee_name=callee_name)
+            session.run(query, caller_id=self._make_id(caller_chunk), callee_name=callee_name)
 
     def get_dependencies(self, chunk_name: str) -> list[str]:
-        """Find everything a specific chunk calls.
-        
-        This is the magic of GraphRAG! We just follow the arrows.
-        """
-        if not self._driver:
-            return []
+        if self.use_fallback:
+            nodes = [n for n, d in self.nx_graph.nodes(data=True) if d.get('name') == chunk_name]
+            deps = []
+            for n in nodes:
+                for successor in self.nx_graph.successors(n):
+                    deps.append(self.nx_graph.nodes[successor].get('name'))
+            return deps
 
-        query = """
-        MATCH (caller:Chunk {name: $name})-[:CALLS]->(callee)
-        RETURN callee.name AS callee_name
-        """
+        if not self._driver: return []
+        query = "MATCH (caller:Chunk {name: $name})-[:CALLS]->(callee) RETURN callee.name AS callee_name"
         with self._driver.session() as session:
             result = session.run(query, name=chunk_name)
             return [record["callee_name"] for record in result]
             
     def get_upstream_callers(self, chunk_name: str) -> list[str]:
-        """Find all functions that call a specific chunk.
-        
-        This finds the 'upstream' dependencies. If I change 'chunk_name',
-        these are the functions that might break!
-        """
-        if not self._driver:
-            return []
+        if self.use_fallback:
+            nodes = [n for n, d in self.nx_graph.nodes(data=True) if d.get('name') == chunk_name]
+            callers = []
+            for n in nodes:
+                for predecessor in self.nx_graph.predecessors(n):
+                    callers.append(self.nx_graph.nodes[predecessor].get('name'))
+            return callers
 
-        query = """
-        MATCH (caller:Chunk)-[:CALLS]->(callee:Chunk {name: $name})
-        RETURN caller.name AS caller_name
-        """
+        if not self._driver: return []
+        query = "MATCH (caller:Chunk)-[:CALLS]->(callee:Chunk {name: $name}) RETURN caller.name AS caller_name"
         with self._driver.session() as session:
             result = session.run(query, name=chunk_name)
             return [record["caller_name"] for record in result]
 
     def get_node_metadata(self, chunk_name: str) -> dict | None:
-        """Fetch the structural metadata (file, lines, type) for a node."""
-        if not self._driver:
-            return None
-            
-        query = """
-        MATCH (c:Chunk {name: $name})
-        RETURN c.file_path AS file, c.start_line AS start_line, 
-               c.end_line AS end_line, c.type AS type
-        LIMIT 1
-        """
-        with self._driver.session() as session:
-            result = session.run(query, name=chunk_name).single()
-            if result:
-                return dict(result)
+        if self.use_fallback:
+            nodes = [n for n, d in self.nx_graph.nodes(data=True) if d.get('name') == chunk_name]
+            if nodes:
+                data = self.nx_graph.nodes[nodes[0]]
+                return {"file": data.get("file_path"), "start_line": data.get("start_line"), 
+                        "end_line": data.get("end_line"), "type": data.get("type")}
             return None
 
-            
+        if not self._driver: return None
+        query = """MATCH (c:Chunk {name: $name}) RETURN c.file_path AS file, c.start_line AS start_line, 
+                   c.end_line AS end_line, c.type AS type LIMIT 1"""
+        with self._driver.session() as session:
+            result = session.run(query, name=chunk_name).single()
+            if result: return dict(result)
+            return None
+
     def clear_all(self):
-        """Delete all nodes and edges (useful for tests)."""
-        if not self._driver:
+        if self.use_fallback:
+            self.nx_graph.clear()
             return
+            
+        if not self._driver: return
         query = "MATCH (n) DETACH DELETE n"
         with self._driver.session() as session:
             session.run(query)
