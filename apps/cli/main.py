@@ -48,6 +48,29 @@ def main():
         value = result.get(key, "No output.")
         logger.info(f"\n{'='*60}\n{title}\n{'='*60}\n{value}")
 
+    # ---------------------------------------------------------
+    # POST TO GITHUB
+    # ---------------------------------------------------------
+    try:
+        repo_parts = repo_url.rstrip("/").split("/")
+        repo_name = repo_parts[-1]
+        owner = repo_parts[-2]
+        
+        comment_body = f"# 🦊 ArchFox AI Code Review\n\n"
+        if "final_report" in result:
+            comment_body += f"{result['final_report']}\n\n"
+            
+        if "fix_payload" in result:
+            comment_body += "---\n### 🛠️ Suggested Fixes\n\n"
+            comment_body += f"{result['fix_payload']}\n"
+
+        from tools.github.github_client import GitHubClient
+        client = GitHubClient()
+        client.post_pr_comment(owner, repo_name, pr_number, comment_body)
+        logger.info("Successfully posted review to GitHub PR!")
+    except Exception as e:
+        logger.error(f"Failed to post to GitHub: {e}")
+
     logger.info("ArchFox run complete.")
 
 
