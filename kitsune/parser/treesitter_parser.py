@@ -26,37 +26,33 @@ from __future__ import annotations
 from pathlib import Path
 
 import tree_sitter_python as tspython
+import tree_sitter_javascript as tsjavascript
+import tree_sitter_typescript as tstypescript
 from tree_sitter import Language, Node, Parser
 
-# Build the Python language object once at import time.
-# Language() wraps the compiled grammar so the Parser knows how to
-# tokenise and structure Python source code.
-PYTHON_LANGUAGE = Language(tspython.language())
+# Build the language objects once at import time.
+LANGUAGES = {
+    ".py": Language(tspython.language()),
+    ".js": Language(tsjavascript.language()),
+    ".jsx": Language(tsjavascript.language()),
+    ".ts": Language(tstypescript.language_typescript()),
+    ".tsx": Language(tstypescript.language_tsx()),
+}
 
 
-def make_parser() -> Parser:
-    """Return a configured tree-sitter Parser for Python."""
-    return Parser(PYTHON_LANGUAGE)
+def make_parser(ext: str) -> Parser:
+    """Return a configured tree-sitter Parser for the given extension."""
+    lang = LANGUAGES.get(ext)
+    if not lang:
+        raise ValueError(f"Unsupported language extension: {ext}")
+    return Parser(lang)
 
 
 def parse_file(path: str | Path) -> tuple[Node, bytes]:
-    """Parse a Python source file and return the root AST node + raw bytes.
-
-    Parameters
-    ----------
-    path:
-        Path to the .py file to parse.
-
-    Returns
-    -------
-    root_node:
-        The root Node of the concrete syntax tree.
-    source_bytes:
-        The raw UTF-8 bytes of the file (needed to extract text from
-        byte-offset ranges that tree-sitter gives us).
-    """
-    source = Path(path).read_bytes()
-    parser = make_parser()
+    """Parse a source file and return the root AST node + raw bytes."""
+    path_obj = Path(path)
+    source = path_obj.read_bytes()
+    parser = make_parser(path_obj.suffix)
     tree = parser.parse(source)
     return tree.root_node, source
 
