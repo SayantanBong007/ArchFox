@@ -1,0 +1,36 @@
+name: 'ArchFox AI Code Reviewer'
+description: 'State-of-the-art AI pair programmer that reviews PRs using a hybrid knowledge graph (Neo4j/NetworkX).'
+
+branding:
+  icon: 'cpu'
+  color: 'purple'
+
+inputs:
+  github_token:
+    description: 'GitHub token for posting comments'
+    required: true
+  groq_api_key:
+    description: 'Groq API Key for LLM inference (llama-3.1-8b-instant)'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      shell: bash
+      run: |
+        pip install -r ${{ github.action_path }}/requirements.txt
+        
+    - name: Run ArchFox
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        GROQ_API_KEY: ${{ inputs.groq_api_key }}
+        PYTHONPATH: ${{ github.action_path }}
+      run: |
+        python ${{ github.action_path }}/apps/cli/main.py review --repo "https://github.com/${{ github.repository }}" --pr ${{ github.event.pull_request.number }}
