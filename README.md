@@ -1,8 +1,8 @@
-# ArchFox 🦊 AI Code Reviewer
+# ArchFox 🦊
 
-ArchFox is a state-of-the-art AI pair programmer that reviews your Pull Requests using a hybrid **GraphRAG** Knowledge Engine (Neo4j & ChromaDB).
+ArchFox is a Repository Knowledge Base System.
 
-It analyzes your entire codebase to understand the deep relationships between your functions and classes before making suggestions!
+It analyzes your entire codebase to understand the deep relationships between your functions and classes to act as a powerful code reviewer.
 
 ## How to use ArchFox in your repository (GitHub Action)
 
@@ -32,12 +32,12 @@ jobs:
         uses: SayantanBong007/ArchFox@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          groq_api_key: ${{ secrets.GROQ_API_KEY }}
+          api_key: ${{ secrets.API_KEY }}
 ```
 
 ### Required Secrets
 Make sure you have added the following to your repository's **Settings > Secrets and variables > Actions**:
-- `GROQ_API_KEY`: Your API key from Groq to run the AI models.
+- `API_KEY`: Your API key to run the AI models.
 - `GITHUB_TOKEN`: This is automatically provided by GitHub Actions!
 
 ## Features

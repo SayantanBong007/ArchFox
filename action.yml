@@ -9,8 +9,8 @@ inputs:
   github_token:
     description: 'GitHub token for posting comments'
     required: true
-  groq_api_key:
-    description: 'Groq API Key for LLM inference (llama-3.1-8b-instant)'
+  api_key:
+    description: 'API Key for LLM inference (llama-3.1-8b-instant)'
     required: true
 
 runs:
@@ -30,7 +30,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
-        GROQ_API_KEY: ${{ inputs.groq_api_key }}
+        GROQ_API_KEY: ${{ inputs.api_key }}
         PYTHONPATH: ${{ github.action_path }}
       run: |
         python ${{ github.action_path }}/apps/cli/main.py review --repo "https://github.com/${{ github.repository }}" --pr ${{ github.event.pull_request.number }}
