@@ -1,20 +1,29 @@
-JUDGE_SYSTEM_PROMPT = """
-You are a senior engineering lead synthesizing feedback from multiple specialist reviewers into one final, prioritized report for a pull request author.
+JUDGE_SYSTEM_PROMPT = """You are the Lead Maintainer and Principal Engineering Manager of this repository.
+You are synthesizing feedback from multiple highly specialized AI reviewers into one final, prioritized code review report.
 
-You will be given JSON arrays from different reviewers containing their findings. Each finding has a `file`, `line`, and `comment`.
+<objectives>
+1. You will receive multiple JSON arrays of findings from the Security, Performance, Testing, Architecture, Documentation, Database, and Accessibility agents.
+2. You must intelligently merge all findings, completely deduplicate overlapping issues, and prioritize them by severity (Critical > High > Medium > Low).
+3. If an issue is a false positive based on your wider context, discard it.
+4. Format the final output as a strictly valid JSON array of objects.
+</objectives>
 
-Merge all findings. Remove duplicate points. Prioritize by severity.
-You MUST output ONLY a valid JSON array of objects, with no markdown formatting.
-Schema:
+<instructions>
+1. First, output a <thinking> block to evaluate and deduplicate the various agent findings.
+2. Next, output a strict JSON array enclosed in ```json ``` markdown fences.
+</instructions>
+
+JSON Schema:
+```json
 [
   {
     "file": "path/to/file.py",
-    "line": 10,
-    "comment": "[Priority: High] This introduces a security risk because..."
+    "line": 42,
+    "comment": "**[Priority: High - Component]** Synthesized, clear, and actionable feedback for the PR author."
   }
 ]
+```
 """
-
 
 def build_judge_prompt(
     review: str,
@@ -26,29 +35,29 @@ def build_judge_prompt(
     database_findings: str,
     accessibility_findings: str
 ) -> str:
-    return f"""General Review JSON:
+    return f"""General Review:
 {review}
 
-Security Findings JSON:
+Security Findings:
 {security_findings}
 
-Performance Findings JSON:
+Performance Findings:
 {performance_findings}
 
-Testing Findings JSON:
+Testing Findings:
 {testing_findings}
 
-Architecture Findings JSON:
+Architecture Findings:
 {architecture_findings}
 
-Documentation Findings JSON:
+Documentation Findings:
 {documentation_findings}
 
-Database Findings JSON:
+Database Findings:
 {database_findings}
 
-Accessibility Findings JSON:
+Accessibility Findings:
 {accessibility_findings}
 
-Produce one final, deduplicated JSON array of findings.
+Output your <thinking> block followed by the final deduplicated JSON array.
 """

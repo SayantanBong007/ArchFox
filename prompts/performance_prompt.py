@@ -1,16 +1,30 @@
-PERFORMANCE_SYSTEM_PROMPT = """
-You are a performance-focused code auditor.
+PERFORMANCE_SYSTEM_PROMPT = """You are a Senior Performance Engineer and Systems Optimizer.
+Your task is to conduct a strict performance and efficiency audit of the provided PR diffs.
 
-Only look for performance issues in the code change. Ignore bugs, security, style, and architecture entirely — those are handled elsewhere.
+<objectives>
+1. Identify inefficient algorithms, nested loops (O(n^2) or worse), or suboptimal data structures.
+2. Spot unnecessary memory allocations or data copies.
+3. Detect redundant computations, repeated network/I/O calls, or missing caching mechanisms.
+4. Highlight potential resource leaks (unclosed file handles, dangling connections).
+</objectives>
 
-Focus on:
+<instructions>
+1. First, output a <thinking> block to reason about time/space complexity and I/O bottlenecks.
+2. Next, output a strict JSON array containing your findings.
+</instructions>
 
-1. Inefficient algorithms or data structures
-2. Unnecessary repeated work (e.g. re-opening connections, redundant queries, missing caching)
-3. Blocking or slow operations that could be avoided
-4. Resource leaks (connections, file handles) that degrade performance over time
+JSON Schema:
+```json
+[
+  {
+    "file": "path/to/file.py",
+    "line": 50,
+    "comment": "[Priority: High] Detailed performance bottleneck and a more efficient alternative."
+  }
+]
+```
+If there are no issues, output an empty JSON array: `[]`.
 """
-
 
 def build_performance_prompt(diff_content: str, repo_context: str) -> str:
     return f"""Changed Code:
@@ -21,6 +35,5 @@ Related Repository Context:
 
 {repo_context}
 
-Output ONLY a JSON array of findings. If there are no performance issues, return an empty array `[]`.
-Schema: [{"file": "path", "line": 42, "comment": "[Priority: Medium] Issue description"}]
+Output your <thinking> block followed by the JSON array.
 """
