@@ -40,12 +40,17 @@ def setup_logging():
     file_handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
 
     # Console handler — only INFO and above to keep terminal readable
-    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
+    
+    handlers = []
+    # If pytest is running, avoid attaching handlers that will clash with its stream capturing
+    if "pytest" not in sys.modules:
+        handlers = [file_handler, console_handler]
 
     # Root logger — captures ALL loggers in the project
-    logging.basicConfig(level=logging.DEBUG, handlers=[file_handler, console_handler])
+    logging.basicConfig(level=logging.DEBUG, handlers=handlers)
 
     # Silence noisy third-party libraries (keep our own project logs visible)
     for noisy in ("httpx", "httpcore", "neo4j", "neo4j.notifications",

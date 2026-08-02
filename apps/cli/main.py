@@ -54,7 +54,7 @@ def main():
     # ---------------------------------------------------------
     try:
         repo_parts = repo_url.rstrip("/").split("/")
-        repo_name = repo_parts[-1]
+        repo_name = repo_parts[-1].replace(".git", "")
         owner = repo_parts[-2]
         
         comment_body = f"# 🦊 ArchFox AI Code Review\n\n"

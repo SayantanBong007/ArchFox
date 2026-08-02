@@ -21,6 +21,16 @@ class GitHubClient:
         response.raise_for_status()
         return response.json()
 
+    def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> str:
+        url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}"
+        headers = {
+            "Authorization": f"Bearer {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3.diff"
+        }
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response.text
+
     def post_pr_comment(self, owner: str, repo: str, pr_number: int, comment_body: str):
         """Post a comment to a GitHub Pull Request."""
         url = f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
