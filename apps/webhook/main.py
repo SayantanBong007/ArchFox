@@ -41,6 +41,10 @@ async def github_webhook(request: Request, background_tasks: BackgroundTasks):
         if action != "created":
             return {"status": "ignored", "reason": "not a new comment"}
             
+        # We only care about PRs, not regular issues
+        if "pull_request" not in payload["issue"]:
+            return {"status": "ignored", "reason": "not a pull request comment"}
+            
         comment_body = payload["comment"].get("body", "").strip()
         
         # Check if ArchFox is mentioned
