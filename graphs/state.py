@@ -22,3 +22,10 @@ class PipelineState(TypedDict):
     accessibility_findings: str
     final_report: str
     fix_payload: str
+
+class ChatState(TypedDict):
+    owner: str
+    repo_name: str
+    pr_number: int
+    comment_body: str
+    reply_body: str
