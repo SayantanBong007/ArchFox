@@ -71,6 +71,7 @@ class Neo4jStore:
         CREATE CONSTRAINT chunk_id IF NOT EXISTS 
         FOR (c:Chunk) REQUIRE c.id IS UNIQUE
         """
+        assert self._driver is not None
         with self._driver.session() as session:
             try:
                 session.run(query)
@@ -82,6 +83,7 @@ class Neo4jStore:
 
     def upsert_chunk_node(self, chunk: Chunk):
         if self.use_fallback:
+            assert self.nx_graph is not None
             node_id = self._make_id(chunk)
             self.nx_graph.add_node(
                 node_id,
@@ -98,6 +100,7 @@ class Neo4jStore:
         SET c.name = $name, c.type = $type, c.file_path = $file_path,
             c.start_line = $start_line, c.end_line = $end_line
         """
+        assert self._driver is not None
         with self._driver.session() as session:
             session.run(query, id=self._make_id(chunk), name=chunk.name,
                         type=chunk.chunk_type, file_path=chunk.file_path,
@@ -105,6 +108,7 @@ class Neo4jStore:
 
     def add_call_edge(self, caller_chunk: Chunk, callee_name: str):
         if self.use_fallback:
+            assert self.nx_graph is not None
             caller_id = self._make_id(caller_chunk)
             callee_id = next((n for n, d in self.nx_graph.nodes(data=True) if d.get('name') == callee_name), None)
             if not callee_id:
@@ -118,11 +122,13 @@ class Neo4jStore:
         MERGE (callee:Chunk {name: $callee_name})
         MERGE (caller)-[:CALLS]->(callee)
         """
+        assert self._driver is not None
         with self._driver.session() as session:
             session.run(query, caller_id=self._make_id(caller_chunk), callee_name=callee_name)
 
     def get_dependencies(self, chunk_name: str) -> list[str]:
         if self.use_fallback:
+            assert self.nx_graph is not None
             nodes = [n for n, d in self.nx_graph.nodes(data=True) if d.get('name') == chunk_name]
             deps = []
             for n in nodes:
@@ -132,12 +138,14 @@ class Neo4jStore:
 
         if not self._driver: return []
         query = "MATCH (caller:Chunk {name: $name})-[:CALLS]->(callee) RETURN callee.name AS callee_name"
+        assert self._driver is not None
         with self._driver.session() as session:
             result = session.run(query, name=chunk_name)
             return [record["callee_name"] for record in result]
             
     def get_upstream_callers(self, chunk_name: str) -> list[str]:
         if self.use_fallback:
+            assert self.nx_graph is not None
             nodes = [n for n, d in self.nx_graph.nodes(data=True) if d.get('name') == chunk_name]
             callers = []
             for n in nodes:
@@ -147,12 +155,14 @@ class Neo4jStore:
 
         if not self._driver: return []
         query = "MATCH (caller:Chunk)-[:CALLS]->(callee:Chunk {name: $name}) RETURN caller.name AS caller_name"
+        assert self._driver is not None
         with self._driver.session() as session:
             result = session.run(query, name=chunk_name)
             return [record["caller_name"] for record in result]
 
     def get_node_metadata(self, chunk_name: str) -> dict | None:
         if self.use_fallback:
+            assert self.nx_graph is not None
             nodes = [n for n, d in self.nx_graph.nodes(data=True) if d.get('name') == chunk_name]
             if nodes:
                 data = self.nx_graph.nodes[nodes[0]]
@@ -163,6 +173,7 @@ class Neo4jStore:
         if not self._driver: return None
         query = """MATCH (c:Chunk {name: $name}) RETURN c.file_path AS file, c.start_line AS start_line, 
                    c.end_line AS end_line, c.type AS type LIMIT 1"""
+        assert self._driver is not None
         with self._driver.session() as session:
             result = session.run(query, name=chunk_name).single()
             if result: return dict(result)
@@ -170,10 +181,12 @@ class Neo4jStore:
 
     def clear_all(self):
         if self.use_fallback:
+            assert self.nx_graph is not None
             self.nx_graph.clear()
             return
             
         if not self._driver: return
         query = "MATCH (n) DETACH DELETE n"
+        assert self._driver is not None
         with self._driver.session() as session:
             session.run(query)

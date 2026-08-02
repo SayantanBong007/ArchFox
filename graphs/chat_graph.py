@@ -34,7 +34,7 @@ def post_reply_node(state: ChatState):
     return {}
 
 def build_chat_graph():
-    graph = StateGraph(ChatState)
+    graph = StateGraph(ChatState)  # type: ignore
 
     graph.add_node("answer", answer_node)
     graph.add_node("post_reply", post_reply_node)

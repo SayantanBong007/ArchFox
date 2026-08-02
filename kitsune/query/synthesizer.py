@@ -9,6 +9,8 @@ import os
 import logging
 from openai import OpenAI
 
+from kitsune.query.hybrid_search import SearchResult
+
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are Kitsune, an expert AI software architect. 
@@ -42,7 +44,7 @@ class Synthesizer:
             api_key=api_key
         )
 
-    def _format_context(self, search_results: dict) -> str:
+    def _format_context(self, search_results: SearchResult) -> str:
         """Format the primary chunks and dependencies into a readable string."""
         context = ""
         
@@ -66,7 +68,7 @@ class Synthesizer:
                 
         return context
 
-    def generate_answer(self, question: str, search_results: dict):
+    def generate_answer(self, question: str, search_results: SearchResult):
         """Send prompt to LLM and yield streaming response chunks."""
         context_str = self._format_context(search_results)
         

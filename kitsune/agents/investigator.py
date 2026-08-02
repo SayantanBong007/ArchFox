@@ -8,7 +8,7 @@ import os
 import logging
 from openai import OpenAI
 
-from kitsune.query.hybrid_search import HybridSearcher
+from kitsune.query.hybrid_search import HybridSearcher, SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class IssueInvestigator:
         
         self.client = OpenAI(base_url=base_url, api_key=api_key)
 
-    def _format_context(self, search_results: dict) -> str:
+    def _format_context(self, search_results: SearchResult) -> str:
         """Format the hybrid search results into a readable context block."""
         context = ""
         

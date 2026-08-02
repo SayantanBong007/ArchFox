@@ -97,4 +97,4 @@ def embed_batch(texts: list[str]) -> list[list[float]]:
 
 def embedding_dim() -> int:
     """Return the number of dimensions in each embedding vector (384)."""
-    return _get_model().get_sentence_embedding_dimension()
+    return _get_model().get_sentence_embedding_dimension() or 384

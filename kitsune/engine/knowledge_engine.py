@@ -15,7 +15,7 @@ class RepositoryKnowledgeEngine:
     data and semantic context for autonomous agents to use.
     """
 
-    def __init__(self, chroma_path: str = None):
+    def __init__(self, chroma_path: str | None = None):
         if not chroma_path:
             # Default to the ArchFox data directory
             base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))

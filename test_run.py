@@ -30,7 +30,7 @@ def main():
     logger.info(f"Log file: {LOG_FILE}")
 
     graph = build_pipeline_graph()
-    result = graph.invoke({"repo_url": repo_url, "pr_number": pr_number})
+    result = graph.invoke({"repo_url": repo_url, "pr_number": pr_number})  # type: ignore
 
     sections = [
         ("REVIEW",               "review"),

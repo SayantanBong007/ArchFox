@@ -36,6 +36,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
+from typing import cast, Any
 
 import chromadb
 from chromadb.config import Settings
@@ -123,9 +124,9 @@ class ChromaStore:
 
         self._collection.add(
             ids=ids,
-            embeddings=vectors,
+            embeddings=cast(Any, vectors),
             documents=documents,
-            metadatas=metadatas,
+            metadatas=cast(Any, metadatas),
         )
         logger.info(f"Stored {len(chunks)} chunks. "
                     f"Total in DB: {self._collection.count()}")
@@ -153,9 +154,9 @@ class ChromaStore:
 
         # ChromaDB returns nested lists (one list per query).
         # We only sent one query, so we unpack [0].
-        docs      = results["documents"][0]
-        metas     = results["metadatas"][0]
-        distances = results["distances"][0]
+        docs = results["documents"][0] if results["documents"] else []
+        metas = results["metadatas"][0] if results["metadatas"] else []
+        distances = results["distances"][0] if results["distances"] else []
 
         output = []
         for doc, meta, dist in zip(docs, metas, distances):
@@ -185,14 +186,15 @@ class ChromaStore:
         )
 
         output = []
-        if not results["documents"]:
+        if not results["documents"] or not results["metadatas"]:
             return output
             
         docs = results["documents"]
         metas = results["metadatas"]
 
         for doc, meta in zip(docs, metas):
-            output.append({**meta, "text": doc})
+            if doc and meta:
+                output.append({**meta, "text": doc})
 
         return output
 
