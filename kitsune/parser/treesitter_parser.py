@@ -28,6 +28,10 @@ from pathlib import Path
 import tree_sitter_python as tspython
 import tree_sitter_javascript as tsjavascript
 import tree_sitter_typescript as tstypescript
+import tree_sitter_c_cpp as tscpp
+import tree_sitter_go as tsgo
+import tree_sitter_java as tsjava
+import tree_sitter_rust as tsrust
 from tree_sitter import Language, Node, Parser
 
 # Build the language objects once at import time.
@@ -37,6 +41,12 @@ LANGUAGES = {
     ".jsx": Language(tsjavascript.language()),
     ".ts": Language(tstypescript.language_typescript()),
     ".tsx": Language(tstypescript.language_tsx()),
+    ".cpp": Language(tscpp.language_cpp()),
+    ".cc": Language(tscpp.language_cpp()),
+    ".c": Language(tscpp.language_c()),
+    ".go": Language(tsgo.language()),
+    ".java": Language(tsjava.language()),
+    ".rs": Language(tsrust.language()),
 }
 
 

@@ -21,7 +21,9 @@ class JudgeAgent:
         performance_findings: str,
         testing_findings: str,
         architecture_findings: str,
-        documentation_findings: str
+        documentation_findings: str,
+        database_findings: str,
+        accessibility_findings: str
     ):
         user_prompt = build_judge_prompt(
             review,
@@ -29,7 +31,9 @@ class JudgeAgent:
             performance_findings,
             testing_findings,
             architecture_findings,
-            documentation_findings
+            documentation_findings,
+            database_findings,
+            accessibility_findings
         )
 
         response = self.client.chat.completions.create(

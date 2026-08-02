@@ -135,6 +135,26 @@ def documentation_node(state: PipelineState) -> dict:
     return {"documentation_findings": documentation_findings}
 
 
+def database_node(state: PipelineState) -> dict:
+    from agents.database_agent import DatabaseAgent
+    agent = DatabaseAgent()
+    database_findings = agent.review(
+        diff_content=state["diff_content"],
+        repo_context=state["retrieved_context"]
+    )
+    return {"database_findings": database_findings}
+
+
+def accessibility_node(state: PipelineState) -> dict:
+    from agents.accessibility_agent import AccessibilityAgent
+    agent = AccessibilityAgent()
+    accessibility_findings = agent.review(
+        diff_content=state["diff_content"],
+        repo_context=state["retrieved_context"]
+    )
+    return {"accessibility_findings": accessibility_findings}
+
+
 def judge_node(state: PipelineState) -> dict:
     agent = JudgeAgent()
     final_report = agent.judge(
@@ -143,7 +163,9 @@ def judge_node(state: PipelineState) -> dict:
         performance_findings=state["performance_findings"],
         testing_findings=state["testing_findings"],
         architecture_findings=state["architecture_findings"],
-        documentation_findings=state.get("documentation_findings", "No documentation issues found.")
+        documentation_findings=state.get("documentation_findings", "No documentation issues found."),
+        database_findings=state.get("database_findings", "No database issues found."),
+        accessibility_findings=state.get("accessibility_findings", "No accessibility issues found.")
     )
     return {"final_report": final_report}
 

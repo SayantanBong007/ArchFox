@@ -39,8 +39,12 @@ from kitsune.parser.treesitter_parser import (
 # Everything inside these nodes becomes its own chunk.
 _CHUNK_NODE_TYPES = {
     "function_definition", "class_definition",     # Python
-    "function_declaration", "class_declaration",   # JS/TS
-    "arrow_function", "method_definition"          # JS/TS
+    "function_declaration", "class_declaration",   # JS/TS/C++
+    "arrow_function", "method_definition",         # JS/TS
+    "method_declaration",                          # Java
+    "function_item", "impl_item",                  # Rust
+    "struct_type", "interface_type",               # Go
+    "struct_specifier", "class_specifier",         # C++
 }
 
 
@@ -85,7 +89,7 @@ def _extract_docstring(node: Node, source: bytes) -> str:
 
 
 def _node_type_to_chunk_type(node_type: str) -> str:
-    if node_type in {"function_definition", "function_declaration", "arrow_function", "method_definition"}:
+    if node_type in {"function_definition", "function_declaration", "arrow_function", "method_definition", "method_declaration", "function_item"}:
         return "function"
     return "class"
 

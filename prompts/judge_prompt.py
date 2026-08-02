@@ -22,7 +22,9 @@ def build_judge_prompt(
     performance_findings: str,
     testing_findings: str,
     architecture_findings: str,
-    documentation_findings: str
+    documentation_findings: str,
+    database_findings: str,
+    accessibility_findings: str
 ) -> str:
     return f"""General Review JSON:
 {review}
@@ -41,6 +43,12 @@ Architecture Findings JSON:
 
 Documentation Findings JSON:
 {documentation_findings}
+
+Database Findings JSON:
+{database_findings}
+
+Accessibility Findings JSON:
+{accessibility_findings}
 
 Produce one final, deduplicated JSON array of findings.
 """

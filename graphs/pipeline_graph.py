@@ -15,6 +15,8 @@ from graphs.nodes import (
     testing_node,
     architecture_review_node,
     documentation_node,
+    database_node,
+    accessibility_node,
     judge_node,
     kitsune_fix_node
 )
@@ -36,6 +38,8 @@ def build_pipeline_graph():
     graph.add_node("testing", testing_node)
     graph.add_node("architecture_review", architecture_review_node)
     graph.add_node("documentation", documentation_node)
+    graph.add_node("database", database_node)
+    graph.add_node("accessibility", accessibility_node)
     graph.add_node("judge", judge_node)
     graph.add_node("kitsune_fix", kitsune_fix_node)
 
@@ -52,6 +56,8 @@ def build_pipeline_graph():
     graph.add_edge("retrieve_context", "testing")
     graph.add_edge("retrieve_context", "architecture_review")
     graph.add_edge("retrieve_context", "documentation")
+    graph.add_edge("retrieve_context", "database")
+    graph.add_edge("retrieve_context", "accessibility")
     
     graph.add_edge("review", "judge")
     graph.add_edge("security", "judge")
@@ -59,6 +65,8 @@ def build_pipeline_graph():
     graph.add_edge("testing", "judge")
     graph.add_edge("architecture_review", "judge")
     graph.add_edge("documentation", "judge")
+    graph.add_edge("database", "judge")
+    graph.add_edge("accessibility", "judge")
     
     graph.add_edge("judge", "kitsune_fix")
     graph.add_edge("kitsune_fix", END)
