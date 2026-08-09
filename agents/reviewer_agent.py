@@ -1,18 +1,21 @@
-from langchain_groq import ChatGroq
+import os
+from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import SystemMessage
 
-from configs.settings import GROQ_API_KEY
 from prompts.review_prompt import SYSTEM_PROMPT, build_review_prompt
 from tools.agent_tools import AGENT_TOOLS
 
 class ReviewerAgent:
 
     def __init__(self):
-        # We switch to LangChain's ChatGroq to easily bind tools
-        self.llm = ChatGroq(
-            api_key=GROQ_API_KEY,
-            model="llama-3.1-8b-instant"
+        base_url = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+        model = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
+        
+        self.llm = ChatOpenAI(
+            api_key="token-sentry",
+            base_url=base_url,
+            model=model
         )
         
         # create_react_agent builds a mini-graph that handles the

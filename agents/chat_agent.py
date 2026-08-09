@@ -12,8 +12,8 @@ logger = get_logger(__name__)
 class ChatAgent:
     def __init__(self):
         self.client = OpenAI(
-            base_url="https://api.groq.com/openai/v1",
-            api_key=os.environ.get("GROQ_API_KEY")
+            base_url=os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1"),
+            api_key=os.getenv("GROQ_API_KEY", "token-sentry")
         )
         self.engine = RepositoryKnowledgeEngine()
         self.cloner = GitCloneTool()

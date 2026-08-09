@@ -1,17 +1,22 @@
-from langchain_groq import ChatGroq
+import os
+# pyrefly: ignore [missing-import]
+from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import SystemMessage
 
-from configs.settings import GROQ_API_KEY
 from prompts.database_prompt import DATABASE_SYSTEM_PROMPT
 from tools.agent_tools import AGENT_TOOLS
 
 class DatabaseAgent:
 
     def __init__(self):
-        self.llm = ChatGroq(
-            api_key=GROQ_API_KEY,
-            model="llama-3.1-8b-instant"
+        base_url = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+        model = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
+        
+        self.llm = ChatOpenAI(
+            api_key="token-sentry",
+            base_url=base_url,
+            model=model
         )
         self.agent = create_react_agent(self.llm, AGENT_TOOLS)
 

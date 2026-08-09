@@ -1,3 +1,4 @@
+import os
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 from openai import RateLimitError
 from configs.logger import get_logger

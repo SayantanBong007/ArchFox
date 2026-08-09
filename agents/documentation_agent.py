@@ -1,15 +1,15 @@
 import os
 from openai import OpenAI
-from agents.retry_utils import retry_with_backoff
+from agents.retry_utils import llm_retry
 
 class DocumentationAgent:
     def __init__(self):
         self.client = OpenAI(
-            base_url="https://api.groq.com/openai/v1",
-            api_key=os.environ.get("GROQ_API_KEY")
+            base_url=os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1"),
+            api_key=os.getenv("GROQ_API_KEY", "token-sentry")
         )
         
-    @retry_with_backoff()
+    @llm_retry
     def analyze(self, diff_content: str, repo_context: str) -> str:
         prompt = f"""You are a Documentation Expert Agent. Review the code changes for documentation gaps.
         Focus on:
@@ -25,7 +25,7 @@ class DocumentationAgent:
         {diff_content}
         
         Output ONLY a JSON array of findings.
-        Schema: [{"file": "path", "line": 42, "comment": "Issue description"}]
+        Schema: [{{"file": "path", "line": 42, "comment": "Issue description"}}]
         """
         response = self.client.chat.completions.create(
             model=os.getenv("LLM_MODEL", "llama-3.1-8b-instant"),

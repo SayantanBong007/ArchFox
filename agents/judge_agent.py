@@ -1,3 +1,4 @@
+import os
 from agents.retry_utils import llm_retry
 from openai import OpenAI
 
@@ -9,8 +10,8 @@ class JudgeAgent:
 
     def __init__(self):
         self.client = OpenAI(
-            api_key=GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1"
+            api_key=os.getenv("GROQ_API_KEY", "token-sentry"),
+            base_url=os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
         )
 
     @llm_retry
@@ -37,7 +38,7 @@ class JudgeAgent:
         )
 
         response = self.client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=os.getenv("LLM_MODEL", "llama-3.1-8b-instant"),
             messages=[
                 {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}
