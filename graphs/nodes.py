@@ -1,3 +1,5 @@
+import time
+
 from configs.logger import get_logger
 from tools.git.git_clone import GitCloneTool
 from tools.github.github_client import GitHubClient
@@ -80,7 +82,18 @@ def retrieve_context_node(state: PipelineState) -> dict:
     return {"retrieved_context": "\n\n".join(context_chunks)}
 
 
+# All 8 of these fan out from retrieve_context_node and run concurrently. Firing all 8 at
+# once easily exceeds Groq's free-tier tokens-per-minute budget (as low as 8000 TPM), which
+# manifests as intermittent 429/401 failures under load. Staggering their actual outbound
+# requests spreads the burst without meaningfully hurting overall wall-clock time.
+_STAGGER_SECONDS = {
+    "review": 0, "security": 4, "performance": 8, "testing": 12,
+    "architecture_review": 16, "documentation": 20, "database": 24, "accessibility": 28,
+}
+
+
 def review_node(state: PipelineState) -> dict:
+    time.sleep(_STAGGER_SECONDS["review"])
     reviewer = ReviewerAgent()
     review = reviewer.review(
         diff_content=state["diff_content"],
@@ -90,6 +103,7 @@ def review_node(state: PipelineState) -> dict:
 
 
 def security_node(state: PipelineState) -> dict:
+    time.sleep(_STAGGER_SECONDS["security"])
     agent = SecurityAgent()
     security_findings = agent.analyze(
         diff_content=state["diff_content"],
@@ -99,6 +113,7 @@ def security_node(state: PipelineState) -> dict:
 
 
 def performance_node(state: PipelineState) -> dict:
+    time.sleep(_STAGGER_SECONDS["performance"])
     agent = PerformanceAgent()
     performance_findings = agent.analyze(
         diff_content=state["diff_content"],
@@ -108,6 +123,7 @@ def performance_node(state: PipelineState) -> dict:
 
 
 def testing_node(state: PipelineState) -> dict:
+    time.sleep(_STAGGER_SECONDS["testing"])
     agent = TestingAgent()
     testing_findings = agent.analyze(
         diff_content=state["diff_content"],
@@ -117,6 +133,7 @@ def testing_node(state: PipelineState) -> dict:
 
 
 def architecture_review_node(state: PipelineState) -> dict:
+    time.sleep(_STAGGER_SECONDS["architecture_review"])
     agent = ArchitectureAgent()
     architecture_findings = agent.analyze(
         diff_content=state["diff_content"],
@@ -126,6 +143,7 @@ def architecture_review_node(state: PipelineState) -> dict:
 
 
 def documentation_node(state: PipelineState) -> dict:
+    time.sleep(_STAGGER_SECONDS["documentation"])
     from agents.documentation_agent import DocumentationAgent
     agent = DocumentationAgent()
     documentation_findings = agent.analyze(
@@ -136,6 +154,7 @@ def documentation_node(state: PipelineState) -> dict:
 
 
 def database_node(state: PipelineState) -> dict:
+    time.sleep(_STAGGER_SECONDS["database"])
     from agents.database_agent import DatabaseAgent
     agent = DatabaseAgent()
     database_findings = agent.review(
@@ -146,6 +165,7 @@ def database_node(state: PipelineState) -> dict:
 
 
 def accessibility_node(state: PipelineState) -> dict:
+    time.sleep(_STAGGER_SECONDS["accessibility"])
     from agents.accessibility_agent import AccessibilityAgent
     agent = AccessibilityAgent()
     accessibility_findings = agent.review(
