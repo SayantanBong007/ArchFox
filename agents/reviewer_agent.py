@@ -10,7 +10,7 @@ class ReviewerAgent:
 
     def __init__(self):
         base_url = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-        model = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
+        model = os.getenv("LLM_MODEL", "groq/compound-mini")
         
         self.llm = ChatOpenAI(
             api_key=os.getenv("GROQ_API_KEY"),

@@ -28,7 +28,7 @@ class DocumentationAgent:
         Schema: [{{"file": "path", "line": 42, "comment": "Issue description"}}]
         """
         response = self.client.chat.completions.create(
-            model=os.getenv("LLM_MODEL", "openai/gpt-oss-20b"),
+            model=os.getenv("LLM_MODEL", "groq/compound-mini"),
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2
         )

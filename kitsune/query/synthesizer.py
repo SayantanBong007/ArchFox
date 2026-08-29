@@ -34,7 +34,7 @@ class Synthesizer:
     def __init__(self):
         base_url = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
         api_key = os.getenv("LLM_API_KEY", os.getenv("GROQ_API_KEY", ""))
-        self.model = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
+        self.model = os.getenv("LLM_MODEL", "groq/compound-mini")
         
         if not api_key:
             logger.warning("No LLM_API_KEY or GROQ_API_KEY found! LLM queries will fail.")

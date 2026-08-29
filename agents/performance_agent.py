@@ -19,7 +19,7 @@ class PerformanceAgent:
         user_prompt = build_performance_prompt(diff_content, repo_context)
 
         response = self.client.chat.completions.create(
-            model=os.getenv("LLM_MODEL", "openai/gpt-oss-20b"),
+            model=os.getenv("LLM_MODEL", "groq/compound-mini"),
             messages=[
                 {"role": "system", "content": PERFORMANCE_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}
