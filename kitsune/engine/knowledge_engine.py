@@ -25,10 +25,19 @@ class RepositoryKnowledgeEngine:
         self.graph_store = Neo4jStore()
         self.hybrid_searcher = HybridSearcher(self.chroma_store, self.graph_store)
 
+    # All extensions the tree-sitter parser (kitsune/parser/treesitter_parser.py) supports.
+    # index_directory()'s own default is (".py",) only — pass the full set explicitly so
+    # non-Python repos actually get indexed instead of silently producing zero chunks.
+    SUPPORTED_EXTENSIONS = (
+        ".py", ".js", ".jsx", ".ts", ".tsx",
+        ".c", ".h", ".cpp", ".hpp", ".cc",
+        ".go", ".java", ".rs",
+    )
+
     def index_repository(self, repo_path: str):
         """Parse, chunk, and index an entire repository into Graph + Vector DBs."""
         indexer = Indexer(self.chroma_store, self.graph_store)
-        indexer.index_directory(repo_path)
+        indexer.index_directory(repo_path, extensions=self.SUPPORTED_EXTENSIONS)
         logger.info(f"Indexed {repo_path} into Repository Knowledge Engine.")
 
     def search_semantic(self, query: str, top_k: int = 5) -> str:

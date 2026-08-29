@@ -146,6 +146,11 @@ class ChromaStore:
         List of result dicts — each contains chunk metadata + 'text' + 'score'.
         Score is the cosine similarity (higher = more similar).
         """
+        if self._collection.count() == 0:
+            # Nothing indexed (e.g. an unsupported language, or an empty repo) —
+            # ChromaDB rejects n_results=0 outright, so short-circuit instead of crashing.
+            return []
+
         results = self._collection.query(
             query_embeddings=[query_vector],
             n_results=min(k, self._collection.count()),
