@@ -27,15 +27,28 @@ _MAX_DIFF_CHARS = 4000
 _MAX_CONTEXT_CHARS = 5000
 
 
-def _truncate_for_llm(text: str, max_chars: int, label: str) -> str:
-    if len(text) <= max_chars:
-        return text
-    omitted = len(text) - max_chars
-    logger.warning(
-        f"Truncating {label} from {len(text)} to {max_chars} chars "
-        f"({omitted} chars omitted) to stay within the LLM's token budget"
-    )
-    return text[:max_chars] + f"\n\n... [TRUNCATED: {omitted} more characters omitted to fit the LLM's token budget]"
+def _join_until_budget(blocks: list[str], max_chars: int, label: str) -> str:
+    """Concatenate blocks (one per changed file / one per retrieved chunk) up to a character
+    budget WITHOUT ever cutting a single block mid-way. A flat text[:max_chars] slice can chop
+    a file's diff off mid-function, and an LLM has no way to tell "ArchFox truncated this" from
+    "this code is genuinely incomplete" -- it will (correctly, given what it's shown) flag the
+    file as broken. Dropping whole blocks instead keeps every included file/chunk syntactically
+    complete; the first block is always included in full even if it alone exceeds the budget,
+    so a single large file still produces useful output instead of an empty diff.
+    """
+    result = ""
+    omitted = 0
+    for block in blocks:
+        if result and len(result) + len(block) > max_chars:
+            omitted += 1
+            continue
+        result += block
+
+    if omitted:
+        logger.warning(f"{label}: omitted {omitted} block(s) to stay within {max_chars} chars")
+        result += f"\n\n... [TRUNCATED: {omitted} more section(s) omitted to fit the LLM's token budget]"
+
+    return result
 
 
 def clone_node(state: PipelineState) -> dict:
@@ -76,15 +89,16 @@ def fetch_pr_node(state: PipelineState) -> dict:
 
 
 def build_diff_node(state: PipelineState) -> dict:
-    diff_content = ""
+    file_blocks = []
 
     for file in state["pr_files"]:
-        diff_content += f"\nFILE: {file['filename']}\n"
+        block = f"\nFILE: {file['filename']}\n"
         patch = file.get("patch")
         if patch:
-            diff_content += patch
+            block += patch
+        file_blocks.append(block)
 
-    diff_content = _truncate_for_llm(diff_content, _MAX_DIFF_CHARS, "diff_content")
+    diff_content = _join_until_budget(file_blocks, _MAX_DIFF_CHARS, "diff_content")
     return {"diff_content": diff_content}
 
 
@@ -98,9 +112,7 @@ def retrieve_context_node(state: PipelineState) -> dict:
         context = _engine.search_semantic(query=query)
         context_chunks.append(context)
 
-    retrieved_context = _truncate_for_llm(
-        "\n\n".join(context_chunks), _MAX_CONTEXT_CHARS, "retrieved_context"
-    )
+    retrieved_context = _join_until_budget(context_chunks, _MAX_CONTEXT_CHARS, "retrieved_context")
     return {"retrieved_context": retrieved_context}
 
 

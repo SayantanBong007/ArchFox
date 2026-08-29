@@ -3,7 +3,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import SystemMessage
 
-from agents.retry_utils import llm_retry
+from agents.retry_utils import llm_retry_tool_calling
 from prompts.review_prompt import SYSTEM_PROMPT, build_review_prompt
 from tools.agent_tools import AGENT_TOOLS
 
@@ -24,7 +24,7 @@ class ReviewerAgent:
         # "think -> use tool -> observe -> answer" loop for us!
         self.agent = create_react_agent(self.llm, AGENT_TOOLS)
 
-    @llm_retry
+    @llm_retry_tool_calling
     def review(self, diff_content: str, repo_context: str):
         user_prompt = build_review_prompt(diff_content, repo_context)
         
