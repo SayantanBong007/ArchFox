@@ -19,7 +19,7 @@ class SecurityAgent:
         user_prompt = build_security_prompt(diff_content, repo_context)
 
         response = self.client.chat.completions.create(
-            model=os.getenv("LLM_MODEL", "llama-3.1-8b-instant"),
+            model=os.getenv("LLM_MODEL", "openai/gpt-oss-20b"),
             messages=[
                 {"role": "system", "content": SECURITY_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}

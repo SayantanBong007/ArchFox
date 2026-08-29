@@ -38,7 +38,7 @@ class JudgeAgent:
         )
 
         response = self.client.chat.completions.create(
-            model=os.getenv("LLM_MODEL", "llama-3.1-8b-instant"),
+            model=os.getenv("LLM_MODEL", "openai/gpt-oss-20b"),
             messages=[
                 {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}

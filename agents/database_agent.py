@@ -11,7 +11,7 @@ class DatabaseAgent:
 
     def __init__(self):
         base_url = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-        model = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
+        model = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
         
         self.llm = ChatOpenAI(
             api_key="token-sentry",
