@@ -33,4 +33,4 @@ runs:
         GROQ_API_KEY: ${{ inputs.api_key }}
         PYTHONPATH: ${{ github.action_path }}
       run: |
-        python ${{ github.action_path }}/apps/cli/main.py review --repo "https://github.com/${{ github.repository }}" --pr ${{ github.event.pull_request.number }}
+        python ${{ github.action_path }}/apps/cli/main.py --repo "https://github.com/${{ github.repository }}" --pr ${{ github.event.pull_request.number }}
