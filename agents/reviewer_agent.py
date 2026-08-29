@@ -13,7 +13,7 @@ class ReviewerAgent:
         model = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
         
         self.llm = ChatOpenAI(
-            api_key="token-sentry",
+            api_key=os.getenv("GROQ_API_KEY"),
             base_url=base_url,
             model=model
         )
