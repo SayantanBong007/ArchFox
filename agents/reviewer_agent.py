@@ -10,12 +10,13 @@ class ReviewerAgent:
 
     def __init__(self):
         base_url = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-        model = os.getenv("LLM_MODEL", "groq/compound-mini")
+        model = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
         
         self.llm = ChatOpenAI(
             api_key=os.getenv("GROQ_API_KEY"),
             base_url=base_url,
-            model=model
+            model=model,
+            max_tokens=2048
         )
         
         # create_react_agent builds a mini-graph that handles the

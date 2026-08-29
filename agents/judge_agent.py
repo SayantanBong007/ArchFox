@@ -38,11 +38,12 @@ class JudgeAgent:
         )
 
         response = self.client.chat.completions.create(
-            model=os.getenv("LLM_MODEL", "groq/compound-mini"),
+            model=os.getenv("LLM_MODEL", "openai/gpt-oss-20b"),
             messages=[
                 {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}
-            ]
+            ],
+            max_tokens=2048
         )
 
         return response.choices[0].message.content

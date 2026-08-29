@@ -19,6 +19,24 @@ logger = get_logger(__name__)
 
 _engine = RepositoryKnowledgeEngine()
 
+# Groq's free-tier TPM cap (8000 for plain chat models, confirmed live) is easy for a real
+# diff + retrieved context to exceed on its own -- a single agent's prompt for a modest test
+# PR already needed ~9182 tokens. Truncate both large text blobs once, at the source, rather
+# than in each of the 8 agents separately.
+_MAX_DIFF_CHARS = 4000
+_MAX_CONTEXT_CHARS = 5000
+
+
+def _truncate_for_llm(text: str, max_chars: int, label: str) -> str:
+    if len(text) <= max_chars:
+        return text
+    omitted = len(text) - max_chars
+    logger.warning(
+        f"Truncating {label} from {len(text)} to {max_chars} chars "
+        f"({omitted} chars omitted) to stay within the LLM's token budget"
+    )
+    return text[:max_chars] + f"\n\n... [TRUNCATED: {omitted} more characters omitted to fit the LLM's token budget]"
+
 
 def clone_node(state: PipelineState) -> dict:
     repo_name = state["repo_url"].split("/")[-1].replace(".git", "")
@@ -66,6 +84,7 @@ def build_diff_node(state: PipelineState) -> dict:
         if patch:
             diff_content += patch
 
+    diff_content = _truncate_for_llm(diff_content, _MAX_DIFF_CHARS, "diff_content")
     return {"diff_content": diff_content}
 
 
@@ -79,7 +98,10 @@ def retrieve_context_node(state: PipelineState) -> dict:
         context = _engine.search_semantic(query=query)
         context_chunks.append(context)
 
-    return {"retrieved_context": "\n\n".join(context_chunks)}
+    retrieved_context = _truncate_for_llm(
+        "\n\n".join(context_chunks), _MAX_CONTEXT_CHARS, "retrieved_context"
+    )
+    return {"retrieved_context": retrieved_context}
 
 
 # All 8 of these fan out from retrieve_context_node and run concurrently. Firing all 8 at
