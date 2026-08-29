@@ -3,6 +3,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import SystemMessage
 
+from agents.retry_utils import llm_retry
 from prompts.accessibility_prompt import ACCESSIBILITY_SYSTEM_PROMPT
 from tools.agent_tools import AGENT_TOOLS
 
@@ -20,6 +21,7 @@ class AccessibilityAgent:
         )
         self.agent = create_react_agent(self.llm, AGENT_TOOLS)
 
+    @llm_retry
     def review(self, diff_content: str, repo_context: str):
         user_prompt = f"Review the following PR diff for accessibility issues.\n\nDIFF:\n{diff_content}\n\nCONTEXT:\n{repo_context}"
         
