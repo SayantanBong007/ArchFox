@@ -41,6 +41,7 @@ class ChatAgent:
                 {"role": "system", "content": CHAT_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.3
+            temperature=0.3,
+            reasoning_effort="low"
         )
         return response.choices[0].message.content or ""

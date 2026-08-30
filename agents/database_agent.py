@@ -18,7 +18,8 @@ class DatabaseAgent:
             api_key=os.getenv("GROQ_API_KEY"),
             base_url=base_url,
             model=model,
-            max_tokens=2048
+            max_tokens=2048,
+            reasoning_effort="low"
         )
         self.agent = create_react_agent(self.llm, AGENT_TOOLS)
 

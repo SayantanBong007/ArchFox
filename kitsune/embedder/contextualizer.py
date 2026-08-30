@@ -148,6 +148,7 @@ async def build_llm_context_note(chunk: Chunk, repo_summary: str = "") -> str:
             messages=[{"role": "user", "content": prompt}],
             max_tokens=80,
             temperature=0.0,
+            reasoning_effort="low",
         )
         note = (response.choices[0].message.content or "").strip()
         logger.debug(f"LLM context note for '{chunk.name}': {note[:80]}")

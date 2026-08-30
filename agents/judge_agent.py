@@ -43,7 +43,8 @@ class JudgeAgent:
                 {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}
             ],
-            max_tokens=2048
+            max_tokens=2048,
+            reasoning_effort="low"
         )
 
         return response.choices[0].message.content

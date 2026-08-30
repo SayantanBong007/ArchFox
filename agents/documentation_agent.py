@@ -31,6 +31,7 @@ class DocumentationAgent:
             model=os.getenv("LLM_MODEL", "openai/gpt-oss-20b"),
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
-            max_tokens=2048
+            max_tokens=2048,
+            reasoning_effort="low"
         )
         return response.choices[0].message.content
