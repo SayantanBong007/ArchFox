@@ -227,19 +227,28 @@ def judge_node(state: PipelineState) -> dict:
 def kitsune_fix_node(state: PipelineState) -> dict:
     import json
     import os
-    
+    import re
+
     logger.info("Kitsune is processing JSON findings to post inline comments...")
-    
+
     try:
         report_text = state["final_report"].strip()
-        if report_text.startswith("```json"):
-            report_text = report_text[7:]
-        elif report_text.startswith("```"):
-            report_text = report_text[3:]
-        if report_text.endswith("```"):
-            report_text = report_text[:-3]
-        report_text = report_text.strip()
-        
+
+        # judge_prompt.py's system prompt (by design) has the model emit a <thinking> block
+        # BEFORE the fenced JSON, so a fence is essentially never at the very start of the
+        # string -- search for a ```json ... ``` block anywhere, don't assume position 0.
+        fence_match = re.search(r"```json\s*(.*?)```", report_text, re.DOTALL)
+        if not fence_match:
+            fence_match = re.search(r"```\s*(.*?)```", report_text, re.DOTALL)
+
+        if fence_match:
+            report_text = fence_match.group(1).strip()
+        else:
+            # No fence at all -- fall back to the first top-level [...] array in the text.
+            array_match = re.search(r"\[.*\]", report_text, re.DOTALL)
+            if array_match:
+                report_text = array_match.group(0)
+
         findings = json.loads(report_text)
     except Exception as e:
         logger.error(f"Failed to parse final_report as JSON: {e}")
