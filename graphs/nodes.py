@@ -1,3 +1,4 @@
+import re
 import time
 
 from configs.logger import get_logger
@@ -94,6 +95,31 @@ def fetch_pr_node(state: PipelineState) -> dict:
     return {"pr_files": pr_files}
 
 
+def _number_patch(patch: str) -> str:
+    """Prefix every line of a unified-diff patch with its line number in the NEW file.
+
+    The agents must cite exact lines for inline PR comments, but a raw patch only gives
+    hunk headers (@@ -4,13 +4,16 @@), so the model has to count -- and in a live run it
+    miscounted (cited 6 and 8 for changes on 7 and 13), which put comments on the wrong
+    lines. Removed lines get no number, since they don't exist in the new file.
+    """
+    out = []
+    new_line = None
+    for line in patch.splitlines():
+        if line.startswith("@@"):
+            m = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)", line)
+            new_line = int(m.group(1)) if m else None
+            out.append(line)
+        elif new_line is None or line.startswith("\\"):
+            out.append(line)
+        elif line.startswith("-"):
+            out.append(f"{'':>5} | {line}")
+        else:  # '+' added or ' ' context line: both exist in the new file
+            out.append(f"{new_line:>5} | {line}")
+            new_line += 1
+    return "\n".join(out)
+
+
 def build_diff_node(state: PipelineState) -> dict:
     file_blocks = []
 
@@ -101,7 +127,8 @@ def build_diff_node(state: PipelineState) -> dict:
         block = f"\nFILE: {file['filename']}\n"
         patch = file.get("patch")
         if patch:
-            block += patch
+            block += "(left number = line in the new file; cite it as `line`)\n"
+            block += _number_patch(patch)
         file_blocks.append(block)
 
     diff_content = _join_until_budget(file_blocks, _MAX_DIFF_CHARS, "diff_content")
@@ -288,7 +315,8 @@ def kitsune_fix_node(state: PipelineState) -> dict:
         elif clone_prefix_fwd in target_file:
             target_file = target_file.split(clone_prefix_fwd)[1]
         target_file = target_file.replace("\\", "/")
-        
+        finding["file"] = target_file  # the summary comment shows the same repo-relative path
+
         try:
             github_client.post_inline_pr_comment(
                 state["owner"], state["repo_name"], state["pr_number"],

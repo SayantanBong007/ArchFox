@@ -21,6 +21,44 @@ logger = get_logger(__name__)
 from graphs.pipeline_graph import build_pipeline_graph
 
 
+def build_summary_comment(final_report: str, fix_payload: str) -> str:
+    """The PR summary comment: the judge's prose plus one readable list of findings.
+
+    The judge's report contains its findings as a JSON array, and fix_payload is the same
+    array re-serialised, so posting both raw showed every finding twice. Show the prose
+    without the JSON (and without any <thinking> block), then the findings as a list.
+    """
+    import json
+    import re
+
+    body = "# 🦊 ArchFox AI Code Review\n\n"
+
+    prose = re.sub(r"<thinking>.*?</thinking>", "", final_report or "", flags=re.DOTALL)
+    prose = re.sub(r"```.*?```", "", prose, flags=re.DOTALL)            # fenced JSON
+    prose = re.sub(r"^\s*\[\s*\{.*\}\s*\]\s*$", "", prose, flags=re.DOTALL | re.MULTILINE)
+    prose = prose.strip()
+
+    try:
+        findings = json.loads(fix_payload)
+        if not isinstance(findings, list):
+            raise ValueError
+    except (TypeError, ValueError):
+        # Couldn't parse the findings: fall back to posting the raw report.
+        return body + f"{final_report}\n"
+
+    if prose:
+        body += prose + "\n\n"
+    if findings:
+        body += "### Findings\n\n"
+        for f in findings:
+            where = f"`{f.get('file', '?')}:{f.get('line', '?')}`"
+            body += f"- {where} — {f.get('comment', '').strip()}\n"
+        body += "\n_Inline comments were posted on the matching lines of the diff where possible._\n"
+    else:
+        body += "No issues found. ✅\n"
+    return body
+
+
 def main():
     parser = argparse.ArgumentParser(description="ArchFox — AI Code Reviewer")
     parser.add_argument("--repo", required=True, help="Full GitHub repo URL")
@@ -57,13 +95,8 @@ def main():
         repo_name = repo_parts[-1].replace(".git", "")
         owner = repo_parts[-2]
         
-        comment_body = f"# 🦊 ArchFox AI Code Review\n\n"
-        if "final_report" in result:
-            comment_body += f"{result['final_report']}\n\n"
-            
-        if "fix_payload" in result:
-            comment_body += "---\n### 🛠️ Suggested Fixes\n\n"
-            comment_body += f"{result['fix_payload']}\n"
+        comment_body = build_summary_comment(result.get("final_report", ""),
+                                             result.get("fix_payload", ""))
 
         from tools.github.github_client import GitHubClient
         client = GitHubClient()
