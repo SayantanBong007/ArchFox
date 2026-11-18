@@ -59,6 +59,12 @@ def setup_logging():
                   "chromadb", "chromadb.config"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
+    # Hugging Face prints its "unauthenticated requests to the HF Hub" warning through its
+    # own console handler AND through ours, so it showed up twice on every run. It is
+    # harmless (the model downloads fine without HF_TOKEN), so only show real errors.
+    for chatty in ("huggingface_hub", "transformers"):
+        logging.getLogger(chatty).setLevel(logging.ERROR)
+
 
 def get_logger(name: str) -> logging.Logger:
     """
