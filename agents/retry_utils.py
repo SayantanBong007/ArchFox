@@ -8,7 +8,8 @@ logger = get_logger(__name__)
 
 def _log_retry(retry_state):
     reason = retry_state.outcome.exception() if retry_state.outcome else None
-    kind = "tool_use_failed" if isinstance(reason, BadRequestError) else "Rate limited by Groq API"
+    kind = ("Model output could not be parsed (tool_use_failed / output_parse_failed)"
+            if isinstance(reason, BadRequestError) else "Rate limited by Groq API")
     logger.warning(
         f"{kind}. Retrying in {retry_state.next_action.sleep}s "
         f"(Attempt {retry_state.attempt_number}/7)..."
@@ -32,7 +33,10 @@ def _is_transient_tool_call_error(exception: BaseException) -> bool:
     if isinstance(exception, RateLimitError):
         return True
     if isinstance(exception, BadRequestError):
-        return "tool_use_failed" in str(exception)
+        # 'output_parse_failed': same family -- the model put its reasoning where the final
+        # answer belongs and Groq's parser rejected it (seen live in the security agent).
+        text = str(exception)
+        return "tool_use_failed" in text or "output_parse_failed" in text
     return False
 
 

@@ -62,6 +62,10 @@ def setup_logging():
     # Hugging Face prints its "unauthenticated requests to the HF Hub" warning through its
     # own console handler AND through ours, so it showed up twice on every run. It is
     # harmless (the model downloads fine without HF_TOKEN), so only show real errors.
+    # Setting the logger level is not enough: the library resets it when it is imported
+    # (later, when Kitsune loads the embedding model), so use its own verbosity settings.
+    os.environ.setdefault("HF_HUB_VERBOSITY", "error")
+    os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
     for chatty in ("huggingface_hub", "transformers"):
         logging.getLogger(chatty).setLevel(logging.ERROR)
 
