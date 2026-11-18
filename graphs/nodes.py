@@ -3,7 +3,7 @@ import time
 from configs.logger import get_logger
 from tools.git.git_clone import GitCloneTool
 from tools.github.github_client import GitHubClient
-from kitsune.engine.knowledge_engine import RepositoryKnowledgeEngine
+from tools.kitsune_engine import get_engine, namespace_for, set_active
 from analysis.repo_analyzer import RepoAnalyzer
 from analysis.repo_summary import RepoSummary
 from agents.reviewer_agent import ReviewerAgent
@@ -17,7 +17,10 @@ from graphs.state import PipelineState
 
 logger = get_logger(__name__)
 
-_engine = RepositoryKnowledgeEngine()
+
+def _engine_for(state: PipelineState):
+    """The Kitsune engine (own index) for the repository in this pipeline run."""
+    return get_engine(namespace_for(state["owner"], state["repo_name"]))
 
 # Groq's free-tier TPM cap (8000 for plain chat models, confirmed live) is easy for a real
 # diff + retrieved context to exceed on its own -- a single agent's prompt for a modest test
@@ -63,8 +66,11 @@ def clone_node(state: PipelineState) -> dict:
 
 
 def index_node(state: PipelineState) -> dict:
-    logger.info("Kitsune RKE is indexing the repository...")
-    _engine.index_repository(state["repo_path"])
+    logger.info("Kitsune is indexing the repository...")
+    # Make this repo's engine the one the agents' graph tools query.
+    engine = set_active(namespace_for(state["owner"], state["repo_name"]))
+    metrics = engine.index_repository(state["repo_path"])  # incremental: unchanged files are skipped
+    logger.info(metrics.summary())
     return {}
 
 
@@ -103,13 +109,14 @@ def build_diff_node(state: PipelineState) -> dict:
 
 
 def retrieve_context_node(state: PipelineState) -> dict:
-    logger.info("Kitsune RKE is pulling context for the review...")
+    logger.info("Kitsune is pulling context for the review...")
+    engine = _engine_for(state)
     context_chunks = []
 
     for file in state["pr_files"]:
         query = file.get("patch") or file["filename"]
-        # Use semantic search + graph topological data
-        context = _engine.search_semantic(query=query)
+        # Hybrid search: meaning + keywords + call graph, within the context budget
+        context = engine.search_semantic(query=query)
         context_chunks.append(context)
 
     retrieved_context = _join_until_budget(context_chunks, _MAX_CONTEXT_CHARS, "retrieved_context")

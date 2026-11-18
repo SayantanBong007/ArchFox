@@ -135,3 +135,7 @@ websockets==15.0.1
 xxhash==3.8.1
 yarl==1.24.5
 zstandard==0.25.0
+# Kitsune code knowledge engine (Graph RAG), pinned to a commit
+kitsune-code @ git+https://github.com/SayantanBong007/Kitsune.git@0c625fcd70306e325cd05be579cfca9ed068bf9d
+rank-bm25
+pyyaml

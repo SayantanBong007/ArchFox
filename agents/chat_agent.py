@@ -2,7 +2,7 @@ import os
 from openai import OpenAI
 
 from configs.logger import get_logger
-from kitsune.engine.knowledge_engine import RepositoryKnowledgeEngine
+from tools.kitsune_engine import namespace_for, set_active
 from tools.git.git_clone import GitCloneTool
 from tools.github.github_client import GitHubClient
 from prompts.chat_prompt import CHAT_SYSTEM_PROMPT, build_chat_prompt
@@ -15,7 +15,6 @@ class ChatAgent:
             base_url=os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1"),
             api_key=os.getenv("GROQ_API_KEY", "token-sentry")
         )
-        self.engine = RepositoryKnowledgeEngine()
         self.cloner = GitCloneTool()
         self.github = GitHubClient()
         
@@ -29,9 +28,13 @@ class ChatAgent:
         # Fetch the actual PR diff!
         diff_content = self.github.get_pr_diff(owner, repo, pr_number)
         
-        # We assume the repo is already indexed from the PR CI/CD run!
-        # Perform GraphRAG semantic search based on the user's comment
-        context = self.engine.search_semantic(query=comment_body)
+        # This repo's own Kitsune index. Indexing is incremental, so if the PR review
+        # already indexed it on this machine, only changed files are re-read.
+        engine = set_active(namespace_for(owner, repo))
+        engine.index_repository(repo_path)
+
+        # Graph RAG search (meaning + keywords + call graph) based on the user's comment
+        context = engine.search_semantic(query=comment_body)
         
         prompt = build_chat_prompt(comment_body, diff_content, context)
         

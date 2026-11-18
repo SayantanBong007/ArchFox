@@ -21,7 +21,8 @@ dependencies = [
     "tree-sitter-c>=0.21.4",
     "tree-sitter-go>=0.21.2",
     "tree-sitter-java>=0.21.0",
-    "tree-sitter-rust>=0.21.2"
+    "tree-sitter-rust>=0.21.2",
+    "kitsune-code @ git+https://github.com/SayantanBong007/Kitsune.git@0c625fcd70306e325cd05be579cfca9ed068bf9d"
 ]
 
 [project.scripts]

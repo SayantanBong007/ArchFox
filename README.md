@@ -43,6 +43,8 @@ Make sure you have added the following to your repository's **Settings > Secrets
 - `GITHUB_TOKEN`: This is automatically provided by GitHub Actions!
 
 ## Features
+- **Powered by Kitsune**: every review is grounded in [Kitsune](https://github.com/SayantanBong007/Kitsune), a Graph RAG engine that turns the repository into a code knowledge graph (whole functions, resolved call graph, meaning + keyword search). Each reviewed repo gets its own index, and no database server is needed.
+- **8 review agents + a judge**: review, security, performance, testing, architecture, documentation, database and accessibility agents run in parallel; a judge merges their findings. The review, database and accessibility agents can also query Kitsune's call graph themselves (callers, dependencies, blast radius).
 - **Cross-Language**: Fully supports Python, JavaScript, TypeScript, C, C++, Go, Java, and Rust via Tree-sitter!
 - **Pinpoint Inline Comments**: ArchFox leaves exact line-by-line comments on your PR diffs.
 - **Interactive Bot**: Reply to ArchFox's comments with `@archfox` to ask follow-up questions!
