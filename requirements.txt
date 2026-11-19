@@ -4,7 +4,6 @@ aiosignal==1.4.0
 annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.14.2
--e git+https://github.com/SayantanBong007/ArchFox.git@91e85f3aafa3046e7c9d591078f3934a3cb1fc22#egg=archfox
 attrs==26.1.0
 bcrypt==5.0.0
 build==1.5.0

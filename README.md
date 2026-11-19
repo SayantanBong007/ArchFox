@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Run ArchFox
-        uses: SayantanBong007/ArchFox@v1.0.0
+        uses: SayantanBong007/ArchFox@v1.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           api_key: ${{ secrets.API_KEY }}
